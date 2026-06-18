@@ -54,7 +54,7 @@ flowchart TD
 
 - **Input:** Hai vector đặc trưng $\mathbf{f}_i$, $\mathbf{f}_j$ từ Stage 1 (Siamese network — shared weights).
 - **Operation:**
-  Hai vector được **concatenate** rồi truyền qua 3 lớp fully connected và một lớp softmax để phân loại thành 3 lớp (ternary classification). Mạng ước lượng tỉ lệ điểm thẩm mỹ (score ratio) liên tục $r_{ij} = s_i / s_j$, sau đó lượng tử hóa (quantize) thành một trong ba nhãn:
+  Hai vector được **concatenate** rồi truyền qua 3 lớp fully connected và một lớp $\text{softmax}$ để phân loại thành 3 lớp (ternary classification). Mạng ước lượng tỉ lệ điểm thẩm mỹ (score ratio) liên tục $r_{ij} = s_i / s_j$, sau đó lượng tử hóa (quantize) thành một trong ba nhãn:
 
   $$\hat{r}_{ij} = \begin{cases} \gamma & \text{nếu } \theta \le r_{ij}, & (i \text{ vượt trội hơn } j) \\ 1 & \text{nếu } \theta^{-1} \le r_{ij} < \theta, & (i \text{ tương đương } j) \\ \gamma^{-1} & \text{nếu } r_{ij} < \theta^{-1}, & (i \text{ kém hơn } j) \end{cases} \tag{1}$$
 
