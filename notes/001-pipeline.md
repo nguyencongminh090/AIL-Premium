@@ -1,268 +1,253 @@
-# Pipeline Extract — Bài báo 001
+# Pipeline — 001 · Photography Perspective Composition: Towards Aesthetic Perspective Recommendation
 
-| Trường | Nội dung |
-|--------|----------|
-| **Paper ID** | 001 |
-| **Tiêu đề** | Photography Perspective Composition: Towards Aesthetic Perspective Recommendation |
-| **Source file** | `001_Photography_Perspective_Composition_Towards_Aesthetic_Perspective_Recommendation.pdf` |
-| **Worker** | pipeline-extract |
-| **Ngày** | 2026-06-18 |
+> Nguồn: `001_Photography_Perspective_Composition_Towards_Aesthetic_Perspective_Recommendation.pdf` · Worker: pipeline-extract · Ngày: 2026-06-18
 
 ---
 
-## 1. Tổng quan hệ thống
+## Tổng quan luồng (Flow Overview)
 
-Bài báo đề xuất bài toán mới: **photography perspective composition (PPC)** — khác với các phương pháp cropping 2D truyền thống, PPC tái cấu trúc phối cảnh (perspective) trong không gian 3D bằng cách điều chỉnh mối quan hệ không gian giữa các chủ thể (subjects).
+Bài báo đề xuất ba pipeline độc lập nhưng liên kết chặt chẽ:
 
-### Input tổng thể
-- Một ảnh chụp tĩnh (single image) có phối cảnh kém (less favorable / suboptimal perspective), được chụp từ góc nhìn bất kỳ của người dùng thông thường.
-- Không yêu cầu thêm: không cần prompt text, không cần camera trajectory rõ ràng.
-
-### Output tổng thể
-- Một **video chuyển đổi phối cảnh** (perspective transformation video): video ngắn thể hiện quá trình dịch chuyển từ phối cảnh ban đầu (kém thẩm mỹ) sang phối cảnh được tối ưu hóa thẩm mỹ (aesthetically enhanced perspective).
-- Frame cuối cùng của video = **phối cảnh tối ưu được đề xuất** (optimal perspective recommendation).
-- Kèm theo: một **guidance box** (hộp hướng dẫn) được chiếu ngược lên ảnh gốc để hướng dẫn người dùng di chuyển camera.
-
----
-
-## 2. Kiến trúc pipeline tổng thể
-
-Hệ thống gồm **ba pipeline** hoạt động kết hợp:
-
-| # | Tên pipeline | Mục đích |
-|---|-------------|---------|
-| A | **PPC Dataset Generation** | Xây dựng dữ liệu training tự động từ ảnh chuyên nghiệp |
-| B | **Photography Perspective Composition (PPC)** | Model sinh video chuyển đổi phối cảnh (inference) |
-| C | **Perspective Quality Assessment (PQA) Model** | Đánh giá chất lượng video phối cảnh, phục vụ lọc data và RLHF |
-
----
-
-## 3. Pipeline A — Xây dựng dataset PPC tự động
-
-**Nguyên lý cốt lõi:** Do không có dataset PPC sẵn, nhóm tác giả dùng chiến lược *đảo ngược* (reverse): từ ảnh chuyên nghiệp (well-composed) sinh ra chuỗi video chuyển từ tốt → xấu, rồi đảo ngược để thu được dữ liệu chuyển từ xấu → tốt.
-
-### Bước A1 — Thu thập ảnh chuyên nghiệp (Data Source)
-
-| | Chi tiết |
-|-|---------|
-| **Input** | Các dataset ảnh chuyên nghiệp: GAICD, SACD, FLMS, FCDB; bổ sung Unsplash |
-| **Output** | Tập ảnh well-composed làm điểm xuất phát |
-| **Kỹ thuật** | Thu thập từ các nguồn open-source; Unsplash là dataset open-source lớn nhất |
-
-### Bước A2 — Sinh video chuyển đổi phối cảnh (Perspective Transformation Generation)
-
-| | Chi tiết |
-|-|---------|
-| **Input** | Một ảnh well-composed + camera motion trajectory (có thể ngẫu nhiên) |
-| **Output** | Video chuỗi frames: Frame 1 → Frame 2 → ... → Frame N (từ well-composed đến less favorable) |
-| **Kỹ thuật** | **ViewCrafter** (phương pháp 3D reconstruction dựa trên point cloud + diffusion inpainting) — sinh video từ single image theo trajectory cho trước |
-| **Ghi chú** | Trajectory có thể chọn ngẫu nhiên; giới hạn góc xoay nhỏ (10°–30°) để đảm bảo tính nhất quán |
-
-### Bước A3 — Đảo ngược video (Reverse Video)
-
-| | Chi tiết |
-|-|---------|
-| **Input** | Video gốc: well-composed → less favorable (Frame 1 → Frame N) |
-| **Output** | Video đảo ngược: less favorable → well-composed (Frame N → Frame 1) — đây là **training data mong muốn** |
-| **Kỹ thuật** | Đơn giản: đảo thứ tự frame |
-
-### Bước A4 — Lọc dữ liệu (Data Filtering)
-
-| | Chi tiết |
-|-|---------|
-| **Input** | Video thô từ bước A3 (có thể có lỗi: distortion, fixedness, blur) |
-| **Output** | Video chất lượng cao vượt ngưỡng điểm → dataset training cuối cùng |
-| **Kỹ thuật** | Dùng **PQA model** (Pipeline C) để đánh giá và lọc; thang điểm A–E (5 mức); chỉ giữ samples đạt ngưỡng |
-| **Quy mô** | ~5K video thô được lọc |
-
----
-
-## 4. Pipeline B — Photography Perspective Composition (PPC) — Inference
-
-Đây là pipeline chính khi triển khai cho người dùng.
-
-### Bước B1 — Base Pipeline: Image-to-Video Generation
-
-| | Chi tiết |
-|-|---------|
-| **Input** | Ảnh phối cảnh kém (suboptimal perspective image) |
-| **Output** | Video chuyển đổi phối cảnh (từ suboptimal → optimal) |
-| **Kỹ thuật** | **Image-to-Video (I2V) model**: CogVideoX 1.5, HunYuan I2V, hoặc Wan2.1 14B (các open-source model được fine-tune) |
-| **Ghi chú** | Model sinh video thể hiện quá trình dịch camera; frame cuối = optimal perspective |
-
-### Bước B2 — Guidance Box: Hộp hướng dẫn hành động người dùng
-
-| | Chi tiết |
-|-|---------|
-| **Input** | Frame cuối (optimal perspective) từ bước B1 + ảnh gốc ban đầu |
-| **Output** | Một hộp hướng dẫn (guidance box / bounding box) được vẽ trên ảnh gốc, biến dạng hình thang để chỉ ra hướng di chuyển camera |
-| **Kỹ thuật** | **Feature matching** (homography transformation): chiếu guidance box từ optimal perspective ngược lên original perspective; hộp dần trở thành hình chữ nhật khi người dùng di camera đến đúng vị trí |
-
-### Bước B3 — RLHF Fine-tuning (Quality Enhancement)
-
-| | Chi tiết |
-|-|---------|
-| **Input** | Cặp video (win/lose) được PQA đánh giá: $(s, v_h, v_l)$ — prompt + video chất lượng cao + video chất lượng thấp |
-| **Output** | PPC model được tinh chỉnh theo sở thích người dùng |
-| **Kỹ thuật** | **Flow-DPO loss** $\mathcal{L}_{FD}$ (Direct Preference Optimization kết hợp Rectified Flow) — dựa trên VideoAlign và Diffusion-DPO; tham số điều chỉnh: $\beta_t = \beta(1-t)^2$ |
-| **Lý do RLHF** | Một số video GT (ground-truth) có thể kém thẩm mỹ; DPO cho phép model học trajectory thẩm mỹ tốt hơn cả GT |
-
----
-
-## 5. Pipeline C — Perspective Quality Assessment (PQA) Model
-
-PQA phục vụ hai mục đích: (1) lọc dataset (Pipeline A, bước A4), và (2) cung cấp win-lose pairs cho RLHF (Pipeline B, bước B3).
-
-### Bước C1 — Stage 1: Unpaired Video Training
-
-| | Chi tiết |
-|-|---------|
-| **Input** | ~5K video thô không ghép cặp (unpaired); ~1.5K high-quality, ~3.5K low-quality; mở rộng thành **15K unpaired** (mỗi high-quality ghép ngẫu nhiên 10 low-quality) |
-| **Output** | PQA model pre-trained phân biệt chất lượng video cơ bản (VQ, MQ) |
-| **Kỹ thuật** | Fine-tune **Qwen2-VL** với Bradley-Terry loss (BTT) có ties; LoRA cập nhật toàn bộ linear layers |
-| **Mục đích** | Stage này chỉ cần phân biệt chất lượng cơ bản — không đòi hỏi chuyên môn thẩm mỹ |
-
-### Bước C2 — Stage 2: Paired Video Training (Aesthetic Refinement)
-
-| | Chi tiết |
-|-|---------|
-| **Input** | 3 video clips mỗi scene: sinh bởi CogVideoX 1.5, WAN 2.1, và GT gốc; annotators đánh giá từng cặp trên VQ / MQ / CA |
-| **Output** | PQA model tinh chỉnh thêm chiều **composition aesthetic (CA)** |
-| **Kỹ thuật** | Tiếp tục fine-tune từ Stage 1; dùng **special tokens** riêng biệt cho context-agnostic attributes (VQ) và composition-aware attribute (CA); causal attention mechanism để decouple features; shared linear projection head |
-| **Base model** | **Qwen2-VL-2B** |
-| **Training** | Batch size 32, learning rate $2 \times 10^{-6}$, 2 epochs; ~50 NVIDIA H20 GPU hours; sampling 1 fps, resolution 448×448 |
-
-### Ba chiều đánh giá của PQA
-
-| Ký hiệu | Tên | Ý nghĩa |
-|---------|-----|---------|
-| **VQ** | Visual Quality | Chất lượng hình ảnh: độ sắc nét, màu sắc, distortion |
-| **MQ** | Motion Quality | Chất lượng chuyển động: motion smoothness, dynamic degree |
-| **CA** | Composition Aesthetic | Thẩm mỹ bố cục: cải thiện compositional balance qua quá trình chuyển đổi |
-
----
-
-## 6. Sơ đồ pipeline (Mermaid)
+- **(A) Dataset Generation** — Tự động xây dựng tập dữ liệu PPC từ ảnh chuyên nghiệp.
+- **(B) PPC Inference** — Sinh video biến đổi góc nhìn từ kém thẩm mỹ sang tốt hơn, kết hợp RLHF/Flow-DPO để căn chỉnh theo sở thích con người.
+- **(C) PQA Model Training** — Huấn luyện mô hình đánh giá chất lượng phối cảnh (Perspective Quality Assessment) qua hai giai đoạn so sánh.
 
 ```mermaid
-flowchart TD
-    subgraph A["Pipeline A: PPC Dataset Generation"]
-        A1["Ảnh chuyên nghiệp\n(GAICD, SACD, FLMS, FCDB, Unsplash)"]
-        A2["ViewCrafter\n(Point Cloud + Diffusion Inpainting)\n→ Video: well-composed → less favorable"]
-        A3["Đảo ngược frame\n→ Video: less favorable → well-composed"]
-        A4["PQA Model lọc dữ liệu\n(giữ video đạt ngưỡng chất lượng)"]
-        A1 --> A2 --> A3 --> A4
-    end
+flowchart LR
+  subgraph A["(A) Dataset Generation"]
+    A1["Ảnh chuyên nghiệp\n(GAICD, SACD,\nFLMS, FCDB,\nUnsplash)"] --> A2["ViewCrafter\n3D Reconstruction\n+ Diffusion Inpainting"]
+    A2 --> A3["Video: well-composed\n→ less favorable\n(Frame 1…N)"]
+    A3 --> A4["Reverse Video\n→ less favorable\n→ well-composed"]
+    A4 --> A5["PQA Filtering\n(VQ / MQ / CA\nGrade A–E)"]
+    A5 --> A6["Training Data\n(PPC Dataset)"]
+  end
 
-    subgraph C["Pipeline C: PQA Model Training"]
-        C1["Stage 1: Unpaired Videos (~15K)\nFine-tune Qwen2-VL-2B + BTT Loss\n→ Học phân biệt VQ, MQ"]
-        C2["Stage 2: Paired Videos\nAnnotators đánh giá VQ/MQ/CA\n→ Tinh chỉnh CA"]
-        C1 --> C2
-    end
+  subgraph B["(B) PPC Inference (I2V + RLHF)"]
+    B1["Ảnh đầu vào\n(góc nhìn kém)"] --> B2["I2V Model f(θ)\n(CogVideoX / Hunyuan\n/ Wan2.1)"]
+    B2 --> B3["Video biến đổi\n→ góc nhìn tốt hơn"]
+    B3 --> B4["Guidance Box\n+ Homography\n→ AR overlay"]
+    B4 --> B5["Output: video\n+ hướng dẫn\nthao tác camera"]
+    B2 <-->|"RLHF Loop\nFlow-DPO"| B6["PQA Reward\nr(v, s)"]
+  end
 
-    A4 -- "Training data" --> C1
-    C2 -- "Win/lose pairs" --> B3
+  subgraph C["(C) PQA Model Training"]
+    C1["Stage 1: Unpaired Videos\n~15K samples\n(1.5K high / 3.5K low\n→ random pairing ×10)"] --> C2["Qwen2-VL-2B\n+ BTT Loss\nUnpair-wise\nfine-tuning"]
+    C2 --> C3["Stage 2: Paired Videos\n(CogVideoX / Wan2.1 / GT)\nExpert annotation\nVQ / MQ / CA"]
+    C3 --> C4["BTT Loss\n(Pair-wise)\nfine-tuning"]
+    C4 --> C5["PQA Model\n→ Score (VQ, MQ, CA)"]
+  end
 
-    subgraph B["Pipeline B: PPC Inference"]
-        B_in["INPUT:\nẢnh phối cảnh kém\n(single image)"]
-        B1["I2V Model\n(CogVideoX / HunYuan / Wan2.1)\nfine-tuned trên PPC dataset"]
-        B2["Guidance Box Generation\n(Feature Matching + Homography)"]
-        B3["RLHF Fine-tuning\n(Flow-DPO Loss)"]
-        B_out["OUTPUT:\nVideo chuyển đổi phối cảnh\n+ Guidance Box trên ảnh gốc\n+ Frame cuối = Optimal Perspective"]
-
-        B_in --> B1 --> B2 --> B_out
-        B3 -.-> B1
-    end
-
-    A4 -- "Fine-tune I2V model" --> B1
-    C2 -- "Đánh giá chất lượng" --> A4
+  A6 --> B2
+  A6 --> C1
+  C5 --> B6
+  C5 --> A5
 ```
 
 ---
 
-## 7. Training Pipeline — Chi tiết
+## Các giai đoạn (Stages)
 
-### 7.1 Dữ liệu training
-
-| Loại dữ liệu | Số lượng | Nguồn |
-|-------------|---------|-------|
-| Ảnh professional | Nhiều nghìn | GAICD, SACD, FLMS, FCDB, Unsplash |
-| Video thô (3D reconstruction) | ~5K | ViewCrafter từ ảnh professional |
-| Unpaired videos sau lọc | ~15K (mở rộng) | 1.5K high-quality × 10 random pairs |
-| Paired videos (Stage 2 PQA) | bài báo không nêu số chính xác | CogVideoX 1.5 + WAN 2.1 + GT |
-
-### 7.2 Loss functions
-
-| Module | Loss | Công thức |
-|--------|------|----------|
-| PQA Stage 1 & 2 | Bradley-Terry loss với ties (BTT) | Dựa trên so sánh cặp, có xử lý tie |
-| RLHF (PPC) | Flow-DPO loss $\mathcal{L}_{FD}(\theta)$ | $-\mathbb{E}[\log\sigma(-\frac{\beta_t}{2}((\|\nu^h - \nu_\theta(v_t^h,t)\|^2 - \|\nu^h - \nu_{\text{ref}}(v_t^h,t)\|^2) - (\|\nu^l - \nu_\theta(v_t^l,t)\|^2 - \|\nu^l - \nu_{\text{ref}}(v_t^l,t)\|^2)))]$ với $\beta_t = \beta(1-t)^2$ |
-
-### 7.3 Evaluation metrics
-
-**Perspective Accuracy:**
-- CMM (Camera Motion Matching) ↑
-- FVD (Fréchet Video Distance) ↓
-- PSNR ↑, SSIM ↑, LPIPS ↓
-
-**Video Quality (VBench 2.0 I2V benchmarks):**
-- I2V Subject, I2V Background, Subject Consistency, Background Consistency
-- Motion Smoothness, Dynamic Degree, Aesthetic Quality, Imaging Quality
-
-**Human Performance Score (PQA):**
-- VQ ↑, MQ ↑, CA ↑
-
-### 7.4 Kết quả định lượng tốt nhất (Wan2.1 14B)
-
-| Metric | Giá trị |
-|--------|---------|
-| CMM ↑ | 0.5989 |
-| FVD ↓ | 345 |
-| PSNR ↑ | 9.3668 |
-| SSIM ↑ | 0.3265 |
-| LPIPS ↓ | 0.7808 |
-| VQ ↑ | 0.7195 |
-| MQ ↑ | 0.7454 |
-| CA ↑ | 0.7072 |
+### Pipeline A — Tự động xây dựng tập dữ liệu PPC (Dataset Generation)
 
 ---
 
-## 8. Checklist tái hiện (Reproducibility)
+#### Stage A1 — Thu thập dữ liệu nguồn (Data Source Collection)
 
-| Hạng mục | Tình trạng |
-|---------|-----------|
-| **Project page** | Công khai: https://vivocameraresearch.github.io/ppc |
-| **Source code** | Bài báo không nêu rõ có công khai code hay không (project page có thể bao gồm) |
-| **Dataset PPC** | Bài báo không nêu rõ công khai dataset hay không |
-| **Pre-trained PQA model** | Bài báo không nêu |
-| **Base models** | Công khai: ViewCrafter, CogVideoX 1.5, HunYuan I2V, Wan2.1 14B, Qwen2-VL-2B đều là open-source |
-| **Training hyperparameters** | Có nêu: batch=32, lr=2×10⁻⁶, 2 epochs, ~50 H20 GPU hours, 1fps sampling, 448×448 |
-| **Annotation guidelines** | Appendix A (trong paper) |
+- **Input:** Tập ảnh chuyên nghiệp từ nhiều bộ dữ liệu: GAICD, SACD, FLMS, FCDB, và Unsplash (bộ dữ liệu mã nguồn mở lớn nhất).
+- **Operation:** Lựa chọn ảnh có bố cục thẩm mỹ tốt (well-composed perspective) làm điểm xuất phát. Không có phép toán tường minh ở giai đoạn này; tiêu chí lựa chọn dựa vào nguồn gốc dataset chuyên nghiệp.
+- **Output:** Tập ảnh đơn $\{I_i\}$ đại diện cho góc nhìn thẩm mỹ tốt (well-composed perspective).
+
+---
+
+#### Stage A2 — Tái tạo 3D và tạo video biến đổi góc nhìn (3D Reconstruction & Perspective Video Generation)
+
+- **Input:** Ảnh đơn $I_i$ (well-composed) + quỹ đạo di chuyển camera (camera motion trajectory) — có thể là ngẫu nhiên.
+- **Operation:** Sử dụng **ViewCrafter** [50] để tái tạo đám mây điểm (point cloud) từ ảnh đơn, sau đó render các khung hình tương ứng với quỹ đạo camera. Phần thiếu được lấp đầy bằng **Diffusion Inpainting**. Quá trình sinh video từ frame 1 đến frame N biểu diễn chuyển động từ well-composed sang less-favorable perspective:
+
+  $$V_{\text{gen}} = \text{ViewCrafter}(I_i, \tau_{\text{cam}})$$
+
+  trong đó $\tau_{\text{cam}}$ là quỹ đạo camera (có thể chọn ngẫu nhiên).
+
+- **Output:** Video $V_{\text{gen}} = \{F_1, F_2, \ldots, F_N\}$ chuyển từ well-composed (frame 1) sang less-favorable (frame N).
+
+---
+
+#### Stage A3 — Đảo ngược video (Reverse Video)
+
+- **Input:** Video $V_{\text{gen}} = \{F_1, \ldots, F_N\}$ (well-composed → less-favorable).
+- **Operation:** Đảo thứ tự các khung hình:
+
+  $$V_{\text{train}} = \text{Reverse}(V_{\text{gen}}) = \{F_N, F_{N-1}, \ldots, F_1\}$$
+
+  Sau khi đảo, video chuyển từ less-favorable sang well-composed, đúng với dạng dữ liệu huấn luyện mong muốn cho PPC.
+
+- **Output:** Video huấn luyện $V_{\text{train}}$ (less-favorable → well-composed).
+
+---
+
+#### Stage A4 — Lọc dữ liệu bằng PQA (Data Filtering)
+
+- **Input:** Video $V_{\text{train}}$; mô hình PQA đã huấn luyện (từ Pipeline C).
+- **Operation:** PQA đánh giá mỗi video theo ba chiều: visual quality (VQ), motion quality (MQ), và composition aesthetic (CA). Điểm tổng hợp (aggregate score) được quy đổi theo thang điểm chuẩn hóa 5 bậc (A–E):
+
+  | Grade | Level | Raw Score Range | Standardized Score |
+  |---|---|---|---|
+  | A | Excellent | $\geq 5.0$ | 95 (90–100) |
+  | B | Good | $0.0$ đến $4.9$ | 85 (80–89) |
+  | C | Satisfactory | $-5.0$ đến $-0.1$ | 75 (70–79) |
+  | D | Marginal | $-15.0$ đến $-5.1$ | 65 (60–69) |
+  | E | Unsatisfactory | $< -15.0$ | 50 ($< 60$) |
+
+  Chỉ giữ lại các mẫu vượt ngưỡng chất lượng (bài báo không nêu rõ ngưỡng cụ thể — not stated in the paper).
+
+- **Output:** Tập dữ liệu PPC đã lọc, sử dụng cho huấn luyện I2V model.
+
+---
+
+### Pipeline B — Suy luận PPC: Sinh video biến đổi góc nhìn (PPC Inference)
+
+---
+
+#### Stage B1 — Sinh video biến đổi góc nhìn (I2V Base Pipeline)
+
+- **Input:** Ảnh đầu vào $s$ (góc nhìn kém thẩm mỹ — less favorable perspective).
+- **Operation:** Mô hình image-to-video (I2V) $f(\theta)$ nhận ảnh $s$ và sinh ra video biến đổi góc nhìn. Các backbone được thử nghiệm gồm CogVideoX 1.5 (5B), HunYuan I2V (17B), và Wan2.1 (14B). Quá trình này mô hình hóa phân phối có điều kiện:
+
+  $$v \sim p_\theta(v \mid s)$$
+
+  trong đó $v$ là video output và $s$ là ảnh điều kiện (conditioning image).
+
+- **Output:** Video biến đổi góc nhìn $v$ (less-favorable → well-composed).
+
+---
+
+#### Stage B2 — Tạo hộp hướng dẫn và overlay AR (Guidance Box + Homography)
+
+- **Input:** Frame cuối (last frame) của video $v$ = góc nhìn tốt nhất; ảnh ban đầu $s$.
+- **Operation:**
+  1. Vẽ **guidance box** (bounding box màu đỏ) trên frame cuối để chỉ vùng đối tượng mục tiêu.
+  2. Dùng **feature matching** để chiếu guidance box từ frame cuối sang ảnh gốc $s$, tạo ra hộp bị biến dạng (distorted box).
+  3. Khi người dùng di chuyển camera, hộp biến dạng dần tiến về hình chữ nhật khi đạt góc nhìn tốt. Dùng **homography transformation** (biến đổi đồng hình) để đơn giản hóa:
+
+  $$\mathbf{H} = \arg\min_H \sum_i \| \mathbf{x}_i' - H\mathbf{x}_i \|^2$$
+
+  trong đó $\mathbf{x}_i$ là các điểm tương ứng giữa ảnh gốc và frame cuối.
+
+- **Output:** AR overlay hướng dẫn thao tác camera cho người dùng.
+
+---
+
+#### Stage B3 — Căn chỉnh RLHF với Flow-DPO (RLHF Alignment)
+
+- **Input:** Dataset $\mathcal{D} = \{s, v_h, v_l\}$ — mỗi mẫu gồm prompt ảnh $s$, video chất lượng cao $v_h$ (win), và video chất lượng thấp $v_l$ (lose), được tạo bởi reference model $p_{\text{ref}}$.
+- **Operation:** Mục tiêu RLHF là học phân phối $p_\theta(v \mid s)$ tối đa hóa reward $r(v, s)$ (từ PQA) trong khi kiểm soát KL-divergence so với $p_{\text{ref}}$ qua hệ số $\beta$:
+
+  $$\max_{p_\theta} \mathbb{E}_{s \sim \mathcal{D},\, v \sim p_\theta(v|s)} \left[ r(v, s) \right] - \beta \, \mathbb{D}_{\text{KL}} \left[ p_\theta(v \mid s) \,\|\, p_{\text{ref}}(v \mid s) \right] \tag{1}$$
+
+  Trong Rectified Flow, véc-tơ nhiễu $\xi^*$ liên hệ với trường vận tốc (velocity field) $\nu^*$, trong đó:
+
+  $$\| \xi^* - \xi_{\text{pred}}(\nu_t^*, t) \|^2 = (1-t)^2 \| \nu^* - \nu_{\text{pred}}(\nu_t^*, t) \|^2$$
+
+  với $\xi_{\text{pred}}$ và $\nu_{\text{pred}}$ là dự đoán từ mô hình $p_\theta$ hoặc reference model $p_{\text{ref}}$. Từ quan hệ này, **Flow-DPO loss** $\mathcal{L}_{\text{FD}}(\theta)$ được rút ra:
+
+  $$\mathcal{L}_{\text{FD}}(\theta) = -\mathbb{E}\!\left[\log \sigma\!\left(-\frac{\beta_t}{2}\Bigl(\bigl(\|\nu^h - \nu_\theta(\nu_t^h, t)\|^2 - \|\nu^h - \nu_{\text{ref}}(\nu_t^h, t)\|^2\bigr) - \bigl(\|\nu^l - \nu_\theta(\nu_t^l, t)\|^2 - \|\nu^l - \nu_{\text{ref}}(\nu_t^l, t)\|^2\bigr)\Bigr)\right)\right] \tag{2}$$
+
+  trong đó $\beta_t = \beta(1-t)^2$ và kỳ vọng lấy trên các mẫu $\{v_h, v_l\} \sim \mathcal{D}$ và schedule $t$.
+
+- **Output:** Model PPC $f(\theta)$ đã căn chỉnh theo sở thích con người, cho ra video có chất lượng thẩm mỹ cao hơn.
+
+---
+
+### Pipeline C — Huấn luyện mô hình PQA (PQA Model Training)
+
+---
+
+#### Stage C1 — Stage 1: Huấn luyện Unpair-wise (Unpaired Videos)
+
+- **Input:** ~5K video biến đổi góc nhìn được sinh bởi 3D reconstruction; chú thích thủ công xác định ~1.5K mẫu chất lượng cao và ~3.5K mẫu chất lượng thấp. Ghép ngẫu nhiên mỗi mẫu chất lượng cao với 10 mẫu thấp → **15K cặp unpaired**.
+- **Operation:** Fine-tune **Qwen2-VL-2B** với **Bradley-Terry model with ties (BTT) loss** [51]. BTT mở rộng Bradley-Terry truyền thống để xử lý trường hợp hòa (tie). Với một cặp video $(v_i, v_j)$:
+
+  $$P(v_i \succ v_j) = \frac{e^{r(v_i)}}{e^{r(v_i)} + e^{r(v_j)}}$$
+
+  $$P(v_i \sim v_j) = \frac{\delta}{e^{r(v_i)} + \delta + e^{r(v_j)}}$$
+
+  trong đó $r(\cdot)$ là reward score và $\delta$ là tham số tie. BTT loss tối thiểu hóa negative log-likelihood trên toàn bộ tập cặp. Token đặc biệt (special tokens) được tách riêng cho VQ (context-agnostic) và CA (composition-aware) để decoupling đặc trưng qua causal attention.
+
+- **Output:** Model PQA trung gian (intermediate), có khả năng phân biệt chất lượng video cơ bản.
+
+---
+
+#### Stage C2 — Stage 2: Huấn luyện Pair-wise (Paired Videos với chú thích chuyên gia)
+
+- **Input:** Các cặp video được sinh từ CogVideoX 1.5, Wan2.1, và GT (ground truth) với cùng ảnh đầu vào. Chú thích chuyên gia theo 3 chiều: VQ, MQ, CA. Mỗi chiều chọn *A wins / Ties / B wins*.
+- **Operation:** Tiếp tục fine-tune model từ Stage C1 với BTT loss trên tập paired. Điểm reward cho từng chiều được dự đoán qua **shared linear projection head** áp dụng lên token representation từ layer cuối:
+
+  $$r_d(v) = \mathbf{w}_d^\top \phi_d(v), \quad d \in \{\text{VQ},\ \text{MQ},\ \text{CA}\}$$
+
+  trong đó $\phi_d(v)$ là biểu diễn token tương ứng chiều $d$ từ Qwen2-VL-2B, và $\mathbf{w}_d$ là trọng số projection. Metric CA đặc biệt đánh giá **cải thiện bố cục xuyên suốt video** (compositional improvement throughout the video transformation) — không phải chất lượng từng frame tĩnh.
+
+- **Output:** Model PQA hoàn chỉnh, cho điểm $(r_{\text{VQ}},\ r_{\text{MQ}},\ r_{\text{CA}})$ cho mỗi video đầu vào.
+
+---
+
+## Tiền xử lý & hậu xử lý (Pre/Post-processing)
+
+### Tiền xử lý
+
+- **Lọc artifact (Data Filtering):** Các video được sinh bởi 3D reconstruction thường chứa artifact — distortion (biến dạng), fixedness (đứng hình), và blur (mờ). PQA được dùng để tự động lọc thay cho lọc thủ công (1 người chỉ lọc được ~3K video/ngày).
+- **Giới hạn góc xoay (Angle Constraint):** Hệ thống chỉ xử lý các biến đổi góc nhỏ (10°, 20°, 30°). Tập Mix-up (kết hợp mọi góc) cho kết quả tốt nhất trên CMM và FVD.
+- **Lấy mẫu video (Video Sampling):** Video được lấy mẫu ở 1 fps với độ phân giải $448 \times 448$ pixels trong quá trình huấn luyện PQA.
+
+### Hậu xử lý
+
+- **Grading chuẩn hóa:** Điểm thô từ PQA được quy đổi sang thang A–E (5 bậc) để tự động hóa lọc dữ liệu.
+- **LoRA fine-tuning:** Khi huấn luyện PQA, LoRA [13] được áp dụng để cập nhật toàn bộ linear layers trong language model; vision encoder được fine-tune đầy đủ.
+- **Hyperparameters huấn luyện PQA:** Batch size 32, learning rate $2 \times 10^{-6}$, huấn luyện trong 2 epoch trên ~50 NVIDIA H20 GPU hours.
+
+---
+
+## Chỗ thiếu để tái lập (Gaps Blocking Reimplementation)
+
+1. **Ngưỡng lọc PQA không nêu rõ:** Bài báo không công bố ngưỡng điểm cụ thể để giữ/loại mẫu khi lọc dataset (chỉ nói "vượt ngưỡng" — not stated in the paper).
+
+2. **Công thức tổng hợp điểm PQA chưa rõ:** Cách kết hợp ba điểm VQ, MQ, CA thành aggregate score cuối không được định nghĩa tường minh bằng công thức.
+
+3. **Quỹ đạo camera trong ViewCrafter:** Bài báo nói quỹ đạo "có thể là ngẫu nhiên" nhưng không cung cấp chi tiết phân phối hoặc range góc cụ thể sử dụng trong thực tế.
+
+4. **Tie parameter $\delta$ trong BTT loss:** Giá trị của $\delta$ không được công bố.
+
+5. **Số lượng mẫu PPC sau lọc:** Tổng số mẫu còn lại trong training set PPC sau khi lọc PQA không được nêu rõ.
+
+6. **Chi tiết feature matching:** Thuật toán feature matching cụ thể (SIFT, SuperPoint, v.v.) dùng để chiếu guidance box từ frame cuối sang ảnh gốc không được nêu.
+
+7. **Hyperparameters fine-tuning I2V với Flow-DPO:** Learning rate, batch size, số epoch cho I2V fine-tuning không được công bố (bài báo chỉ nêu "follow the settings from the original repository").
 
 ---
 
 ## Thuật ngữ (Glossary)
 
 | English | Tiếng Việt | Giải thích ngắn |
-|---------|-----------|----------------|
-| Photography Perspective Composition (PPC) | Bố cục phối cảnh nhiếp ảnh | Bài toán đề xuất phối cảnh tốt hơn thông qua biến đổi 3D, không chỉ crop 2D |
-| Perspective transformation | Biến đổi phối cảnh | Điều chỉnh vị trí/góc nhìn camera để thay đổi mối quan hệ không gian giữa các chủ thể |
-| Image-to-Video (I2V) | Sinh video từ ảnh | Task sinh video từ một ảnh tĩnh duy nhất |
-| Perspective Quality Assessment (PQA) | Đánh giá chất lượng phối cảnh | Model đánh giá chất lượng video chuyển đổi phối cảnh theo ba chiều VQ/MQ/CA |
-| Visual Quality (VQ) | Chất lượng hình ảnh | Đánh giá chất lượng ảnh: sắc nét, màu sắc, không có artifact |
-| Motion Quality (MQ) | Chất lượng chuyển động | Đánh giá sự mượt mà, tự nhiên của chuyển động camera |
-| Composition Aesthetic (CA) | Thẩm mỹ bố cục | Đánh giá mức cải thiện bố cục qua quá trình chuyển đổi phối cảnh |
-| RLHF | Học tăng cường từ phản hồi con người | Kỹ thuật tinh chỉnh model theo sở thích người dùng |
-| Direct Preference Optimization (DPO) | Tối ưu hóa sở thích trực tiếp | Phương pháp RLHF không cần reward model riêng biệt |
-| Flow-DPO | Flow-DPO | DPO kết hợp Rectified Flow, dùng cho video diffusion model |
-| Bradley-Terry model with Ties (BTT) | Mô hình Bradley-Terry có xử lý ties | Mô hình xác suất cho bài toán so sánh cặp có kết quả hòa |
-| ViewCrafter | ViewCrafter | Model 3D reconstruction từ single image, dùng để sinh video perspective |
-| Guidance Box | Hộp hướng dẫn | Bounding box được chiếu lên ảnh gốc để hướng dẫn người dùng di chuyển camera |
-| Homography transformation | Biến đổi homography | Phép biến đổi hình học chiếu điểm từ mặt phẳng này sang mặt phẳng khác |
-| Feature matching | Khớp đặc trưng | Kỹ thuật tìm điểm tương ứng giữa hai ảnh |
-| Point cloud | Đám mây điểm | Tập hợp điểm 3D biểu diễn cấu trúc không gian của cảnh |
-| Diffusion inpainting | Inpainting khuếch tán | Kỹ thuật lấp đầy vùng thiếu trong ảnh/video dùng diffusion model |
-| LoRA | LoRA (Low-Rank Adaptation) | Kỹ thuật fine-tune hiệu quả tham số, chỉ cập nhật các ma trận low-rank |
-| VBench 2.0 | VBench 2.0 | Bộ benchmark đánh giá chất lượng video sinh ra bởi I2V models |
-| CMM | Camera Motion Matching | Metric đo độ chính xác của chuyển động camera so với ground truth |
-| FVD | Fréchet Video Distance | Metric đo khoảng cách phân phối giữa video sinh ra và video thực |
+|---|---|---|
+| Photography Perspective Composition (PPC) | Bố cục phối cảnh nhiếp ảnh | Phương pháp bố cục dựa trên biến đổi góc nhìn 3D, khác với cắt xén 2D truyền thống |
+| Perspective Quality Assessment (PQA) | Đánh giá chất lượng phối cảnh | Mô hình VLM đánh giá chất lượng video biến đổi góc nhìn theo 3 chiều VQ, MQ, CA |
+| Image-to-Video (I2V) | Ảnh-sang-Video | Mô hình sinh video từ một ảnh đầu vào duy nhất |
+| ViewCrafter | ViewCrafter | Mô hình tái tạo cảnh 3D và sinh video góc nhìn mới từ ảnh đơn [50] |
+| Diffusion Inpainting | Lấp đầy khuếch tán | Kỹ thuật dùng diffusion model để lấp đầy vùng thiếu trong ảnh/video |
+| Flow-DPO Loss ($\mathcal{L}_{\text{FD}}$) | Hàm mất mát Flow-DPO | Hàm loss RLHF dựa trên DPO trong không gian Rectified Flow |
+| Rectified Flow | Luồng chỉnh lưu | Framework sinh ảnh/video dựa trên ODE với đường thẳng từ nhiễu đến dữ liệu |
+| Velocity Field ($\nu^*$) | Trường vận tốc | Đại lượng dự đoán chính trong Rectified Flow, liên hệ với noise vector |
+| Bradley-Terry with Ties (BTT) | Mô hình Bradley-Terry có tính hòa | Mô hình xác suất cho học so sánh cặp, mở rộng để xử lý kết quả hòa |
+| Direct Preference Optimization (DPO) | Tối ưu hóa sở thích trực tiếp | Phương pháp RLHF tối ưu trực tiếp từ preference data, không cần reward model riêng |
+| RLHF | Học tăng cường từ phản hồi người dùng | Kỹ thuật căn chỉnh mô hình AI theo sở thích con người |
+| Visual Quality (VQ) | Chất lượng thị giác | Chiều đánh giá chất lượng hình ảnh tổng thể (context-agnostic) |
+| Motion Quality (MQ) | Chất lượng chuyển động | Chiều đánh giá sự mượt mà và tự nhiên của chuyển động camera |
+| Composition Aesthetic (CA) | Thẩm mỹ bố cục | Chiều đánh giá mức độ cải thiện bố cục thẩm mỹ xuyên suốt video |
+| Guidance Box | Hộp hướng dẫn | Bounding box trên frame cuối hướng dẫn người dùng di chuyển camera |
+| Homography Transformation | Biến đổi đồng hình | Phép chiếu phẳng ánh xạ điểm giữa hai mặt phẳng |
+| Point Cloud | Đám mây điểm | Tập hợp các điểm 3D đại diện cho bề mặt cảnh vật |
+| Well-composed Perspective | Góc nhìn bố cục tốt | Góc chụp có bố cục thẩm mỹ tốt, tuân thủ nguyên tắc nhiếp ảnh |
+| Less-favorable Perspective | Góc nhìn kém thẩm mỹ | Góc chụp có bố cục chưa tối ưu, là đầu vào cần cải thiện |
+| LoRA | Thích nghi hạng thấp | Kỹ thuật fine-tuning hiệu quả bằng cách thêm ma trận hạng thấp vào model |
+| Qwen2-VL-2B | Qwen2-VL-2B | Vision-Language Model 2B tham số, backbone cho PQA [40] |
+| KL-divergence ($\mathbb{D}_{\text{KL}}$) | Phân kỳ KL | Đo khoảng cách giữa hai phân phối xác suất, dùng làm regularization trong RLHF |
+| Causal Attention | Chú ý nhân quả | Cơ chế attention một chiều trong Transformer, dùng để decoupling đặc trưng VQ và CA |
