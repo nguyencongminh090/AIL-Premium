@@ -2,6 +2,7 @@
 
 Thư mục này chứa toàn bộ artifacts phân tích cho 4 papers trong dự án.
 Naming convention: `<id>-<worker>.md` cho per-paper · `analysis-<slug>.md` cho cross-paper.
+Notebooks: `notebooks/<id>-<mode>.ipynb` cho paper-coder artifacts.
 
 ---
 
@@ -18,6 +19,14 @@ Naming convention: `<id>-<worker>.md` cho per-paper · `analysis-<slug>.md` cho 
 | 004 | pipeline-extract | [004-pipeline.md](004-pipeline.md) | Siamese ResNet-50 → pairwise comparison matrix → eigenvalue decomposition → aesthetic score |
 | 008 | paper-overview | [008-overview.md](008-overview.md) | 3D Aesthetic Field (Gaussian Splatting) gợi ý camera pose đẹp nhất từ sparse captures — SOTA Viewpoint Suggestion |
 | 008 | pipeline-extract | [008-pipeline.md](008-pipeline.md) | 2-stage: Distillation (feedforward 3DGS + aesthetic head) → Two-stage Search (coarse + gradient ascent) |
+
+---
+
+## Notebooks (paper-coder)
+
+| Paper ID | Mode | Đường dẫn | Ghi chú |
+|----------|------|-----------|---------|
+| 001 | run-results | [../notebooks/001-run-results.ipynb](../notebooks/001-run-results.ipynb) | Load PPC LoRA (HF: LujianYao/PPC) + Wan2.1-I2V-14B + VideoReward → tái lập Table 2; cần A100/H100, ~32 GB disk |
 
 ---
 
