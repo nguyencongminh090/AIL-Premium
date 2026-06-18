@@ -39,6 +39,7 @@ English technical terms stay unchanged.
 | `intuition`          | plain-language explanation of the core idea             | `notes/<id>-intuition.md`       |
 | `reading-triage`     | rank papers by relevance to a research question         | `notes/reading-triage-<slug>.md`|
 | `latex-fix`          | audit & fix LaTeX formatting in any notes/ artifact     | overwrites file in-place        |
+| `paper-coder`        | generate Jupyter Notebook to reproduce or run results   | `notebooks/<id>-<mode>.ipynb`   |
 
 **Pending (offered, not selected)** — `compare-papers` (side-by-side comparison of a
 chosen 2+ papers). If a plan needs it, the Orchestrator tells the user it is not yet
