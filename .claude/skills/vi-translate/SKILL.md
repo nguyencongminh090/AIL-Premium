@@ -27,7 +27,9 @@ resolution, terminology handling, `notes/` location, and fidelity.
    - preserve every technical term as `bản dịch (English term)` on first occurrence
      within each section;
    - keep equations, symbols, in-text citations, and figure/table references
-     unchanged;
+     **unchanged and in their original LaTeX form** — never rewrite, simplify, or
+     convert them to plain text; if the source uses `$...$` / `$$...$$`, output
+     exactly that;
    - do **not** translate proper nouns, dataset names, model names, or method names;
    - preserve paragraph breaks and the heading hierarchy.
 4. **Append the glossary** of every preserved term.

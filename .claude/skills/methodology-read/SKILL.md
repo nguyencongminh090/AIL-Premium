@@ -17,6 +17,11 @@ resolution, Vietnamese-with-preserved-terms output, `notes/` location, and fidel
 Critical assessment is encouraged, but every claim must be grounded in the paper —
 no fabricated steps, numbers, or weaknesses.
 
+**LaTeX (§7 of shared rule — strictly enforced here).** This skill is the most
+math-dense worker. Every equation, loss function, objective, and formula must be
+written in LaTeX: inline with `$...$`, display with `$$...$$`. Plain-text math
+(`L_rec`, `||x||`, `theta`) is never acceptable in this output.
+
 ## Procedure
 1. **Resolve the target** from `$ARGUMENTS` per the shared rules; if empty, it asks.
 2. **Read in full**, concentrating on the method and experimental-setup sections
@@ -25,7 +30,8 @@ no fabricated steps, numbers, or weaknesses.
    - problem formulation — notation, inputs/outputs, the objective being optimized;
    - the key components/modules and how they connect;
    - the algorithm or training procedure, step by step;
-   - the loss functions and core equations (stated in words and symbols);
+   - the loss functions and core equations — stated in words **and** in LaTeX
+     display math (`$$...$$`), exactly as derived from the paper;
    - the architecture, the data, and the preprocessing;
    - the evaluation protocol (datasets, metrics, baselines, ablations).
 4. **Surface assumptions** the method relies on and where they might break.

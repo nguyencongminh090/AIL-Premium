@@ -21,7 +21,8 @@ terms, but each one is **immediately explained in plain words** rather than assu
    overview, and the key figure.
 3. **State the one core idea** in a single plain sentence.
 4. **Explain the key insight** — *why* it works — using a concrete analogy.
-5. **Walk a tiny example** with toy numbers or a simple scenario.
+5. **Walk a tiny example** with toy numbers or a simple scenario. Any math in the
+   example — even simplified — must use LaTeX (`$...$`), not raw ASCII.
 6. **Contrast with the naive approach** to show what the idea buys.
 7. **Add "Một câu cho người mới"** (one sentence for a newcomer) and
    **"Khi nào trực giác này sai"** (when the intuition breaks down).

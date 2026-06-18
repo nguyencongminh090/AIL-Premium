@@ -25,7 +25,9 @@ and fidelity rules all come from there. It reads that file before producing outp
 3. **Map the structure.** It identifies the paper's sections (abstract,
    introduction, related work, method, experiments/results, discussion, conclusion).
 4. **Condense each section** in 2–5 sentences, keeping the original argument order
-   and preserving exact quantitative results, dataset names, and metrics.
+   and preserving exact quantitative results, dataset names, and metrics. When a
+   section references key equations, render them in LaTeX (`$...$` inline or
+   `$$...$$` display) — never as plain-text approximations.
 5. **Capture the essentials** separately: the problem, the core idea, the
    contributions, and the headline results.
 6. **Apply the language convention** (Vietnamese + inline English terms) and build

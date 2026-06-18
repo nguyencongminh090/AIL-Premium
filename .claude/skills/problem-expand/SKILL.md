@@ -21,8 +21,8 @@ resolution, Vietnamese-with-preserved-terms output, `notes/` location, and fidel
    it asks for a paper or topic.
 2. **State the specific problem** the paper/topic actually tackles, precisely.
 3. **Generalize it:** name the broader **problem class**, give an abstract
-   formulation, and list the assumptions/constraints that — if relaxed — yield a
-   more general problem.
+   formulation (expressed in LaTeX when symbolic — e.g. $\arg\min_{\theta} \mathcal{L}(\theta)$),
+   and list the assumptions/constraints that — if relaxed — yield a more general problem.
 4. **Map neighboring problems:** adjacent or related problems and how they connect to
    this one (specializations, generalizations, duals, prerequisites).
 5. **Position in the landscape:** where this sits among approaches and sub-fields,

@@ -16,6 +16,11 @@ assumptions, novelty, and a reproducibility verdict the user should use
 This skill treats `.claude/rules/research-conventions.md` as binding for input
 resolution, Vietnamese-with-preserved-terms output, `notes/` location, and fidelity.
 
+**LaTeX (§7 of shared rule).** All equations, objective functions, and key
+mathematical expressions within a stage's "Operation" field must be written in
+LaTeX: `$...$` inline, `$$...$$` for standalone equations. Never write math as
+raw ASCII in stage descriptions.
+
 ## Procedure
 1. **Resolve the target** from `$ARGUMENTS` per the shared rules; if empty, it asks.
 2. **Read the PDF**, focusing on the method and implementation details.
@@ -43,7 +48,7 @@ flowchart LR
 ## Các giai đoạn (Stages)
 ### Stage 1 — <tên>
 - **Input:** ...
-- **Operation:** ... (tham số / công thức chính)
+- **Operation:** ... (tham số / công thức chính — viết bằng LaTeX, vd. $f(\mathbf{x}) = \mathbf{W}\mathbf{x} + \mathbf{b}$)
 - **Output:** ...
 
 ## Tiền xử lý & hậu xử lý (Pre/Post-processing)

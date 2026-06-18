@@ -58,6 +58,23 @@ If `$ARGUMENTS` is empty, the Worker lists `papers/` and asks which paper to use
 - Quote sparingly and mark quotes; prefer paraphrase + section/page reference.
 - Preserve all quantitative results exactly (metrics, dataset sizes, ablation deltas).
 
+## 7. Mathematical formulas & LaTeX
+Any Worker that writes an artifact containing mathematical content **must** render
+formulas in LaTeX — never as plain text, Unicode approximations, or code blocks.
+
+- **Inline math** (within a sentence): `$...$` — e.g. `$\mathcal{L}_{total}$`
+- **Display math** (standalone equations): `$$...$$` on its own line — e.g.:
+  ```
+  $$\mathcal{L} = \lambda_1 \mathcal{L}_{rec} + \lambda_2 \mathcal{L}_{perceptual}$$
+  ```
+- **Always use proper LaTeX notation:** subscripts `_{...}`, superscripts `^{...}`,
+  Greek letters `\alpha \beta \theta`, calligraphic `\mathcal{}`, bold `\mathbf{}`,
+  hat `\hat{}`, norm `\|\cdot\|`, argmin/argmax `\arg\min`, fractions `\frac{}{}`.
+- **Never write** `L_total`, `||x||`, `theta`, or `argmin` as raw ASCII in output
+  that contains mathematical content.
+- In `vi-translate` specifically: copy equations verbatim from the source paper —
+  do not re-render or simplify them.
+
 ## 6. Relationship to the ARS plugin
 These Workers are **lightweight, single-pass** tools for reading and distilling
 individual papers. For heavy multi-agent work — full literature synthesis,
