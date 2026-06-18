@@ -36,3 +36,11 @@ Notebooks: `notebooks/<id>-<mode>.ipynb` cho paper-coder artifacts.
 |-------|------|-----------|---------|
 | all (001, 003, 004, 008) | reading-triage | [reading-triage-viewpoint-suggestion.md](reading-triage-viewpoint-suggestion.md) | Triage 4 papers theo chủ đề Viewpoint Suggestion — 008 & 003 ưu tiên cao |
 | all (001, 003, 004, 008) | analysis | [analysis-complexity-reproducibility.md](analysis-complexity-reproducibility.md) | Code availability + độ phức tạp lý thuyết/code + đánh giá khả năng tự reimplementation cho 4 papers |
+
+---
+
+## Nhật ký kiểm tra
+
+| Loại | Đường dẫn | Ghi chú |
+|------|-----------|---------|
+| audit | [audit-log.md](audit-log.md) | Toàn bộ tác vụ AI đã thực hiện — worker × paper × file đầu ra × trạng thái |
