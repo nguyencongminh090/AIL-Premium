@@ -38,6 +38,9 @@ English technical terms stay unchanged.
 | `research-gap`       | gaps + future directions across papers                  | `notes/research-gap-<slug>.md`  |
 | `intuition`          | plain-language explanation of the core idea             | `notes/<id>-intuition.md`       |
 | `reading-triage`     | rank papers by relevance to a research question         | `notes/reading-triage-<slug>.md`|
+| `latex-fix`          | audit & fix LaTeX formatting in any notes/ artifact     | overwrites file in-place        |
+| `paper-coder`        | generate Jupyter Notebook to reproduce or run results   | `notebooks/<id>-<mode>.ipynb`   |
+| `audit-log`          | *(internal utility)* append AI decision entries to `notes/audit-log.md` — triggered automatically by the Orchestrator at key decision points, not called directly by the user for analysis tasks | `notes/audit-log.md` |
 
 **Pending (offered, not selected)** — `compare-papers` (side-by-side comparison of a
 chosen 2+ papers). If a plan needs it, the Orchestrator tells the user it is not yet
@@ -65,6 +68,11 @@ built rather than faking the result, and does the work itself where reasonable.
    - It monitors each Worker: if one returns nothing, errors, or writes an empty or
      suspiciously short file, it re-dispatches once with a clarified instruction
      before reporting a failure.
+   → **Audit (`scope-decision`):** When a paper, topic, or aspect is intentionally
+   included or excluded from the analysis — and that choice is non-obvious — follow
+   the `audit-log` skill. Record *what* is scoped in/out, *why*, and what alternative
+   scoping was considered. Skip this for routine "summarise all four papers" plans
+   (scope is obvious from the user's request).
 5. **Collect.** It verifies every expected `notes/` artifact exists, updates
    `notes/INDEX.md` (paper id · worker · path · one-line note), and gathers the key
    points from each.
@@ -72,6 +80,16 @@ built rather than faking the result, and does the work itself where reasonable.
    cross-paper comparison, a related-work draft, a gap list, etc. — grounded in the
    Worker outputs and citing paper ids. It does **not** merely concatenate Worker
    files.
+   → **Audit (`synthesis-framing`):** When choosing how to organise the cross-paper
+   synthesis (e.g. "by representation type" vs "by task type" vs "chronologically"),
+   follow the `audit-log` skill. Record the chosen lens, why it was chosen over
+   alternatives, and which papers it foregrounds. Omit this when only one framing
+   is sensible.
+   → **Audit (`cross-paper-assumption`):** When the synthesis treats two papers as
+   sharing a dataset, using an equivalent term, or building on each other's conclusions
+   — and the paper text does not make this explicit — follow the `audit-log` skill.
+   Record the assumed connection, its basis, and what would change if the assumption
+   is wrong.
 7. **Report.** It returns a concise chat answer: what was done, the synthesized
    result (or its `notes/` location), and links to each artifact.
 
