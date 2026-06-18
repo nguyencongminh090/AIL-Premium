@@ -13,7 +13,7 @@
 
 | Paper | Venue | Code | Dataset | Base models/libs |
 |-------|-------|------|---------|-----------------|
-| **001** PPC | NeurIPS 2025 (arXiv 2026) | Chưa xác nhận (project page tồn tại: vivocameraresearch.github.io/ppc) | GAICD, SACD, FLMS, FCDB, Unsplash — đều public | Wan2.1 14B, CogVideoX 1.5, HunYuan I2V, Qwen2-VL-2B, ViewCrafter — đều open-source |
+| **001** PPC | NeurIPS 2025 (arXiv 2026) | ✅ **Code public:** github.com/vivoCameraResearch/PPC-Official · **Pretrained LoRA:** HuggingFace LujianYao/PPC | GAICD, SACD, FLMS, FCDB, Unsplash — đều public | ViewCrafter, Wan2.1 14B (DiffSynth-Studio), VideoAlign (PQA) — đều open-source với scripts đầy đủ |
 | **003** HRE | ICCV 2023 (Open Access) | Không nêu trong paper; bản thân paper open access qua CVF | ScanNet — public (cần request) | PointNet — open-source |
 | **004** Pairwise | ICCV 2019 (Open Access) | Không nêu trong paper; bản thân paper open access qua CVF | AVA (~250k), FLICKER-AES (40k) — đều public | ResNet-50 pretrained — torchvision |
 | **008** 3D Aesthetic | arXiv 2026 | Không nêu trong paper | RE10k, DL3DV — đều public | DepthSplat — open-source; VEN teacher — chưa xác nhận |
@@ -31,7 +31,7 @@
 | **004** Pairwise | Trung bình | Thấp-Trung bình | Nhẹ (GTX 1080Ti) | ✅ Hoàn toàn khả thi | 1–2 tuần |
 | **003** HRE | Cao | Cao | Nhẹ (6h / 1× GTX 1080Ti) | ⚠️ Khó nhưng khả thi | 3–6 tuần |
 | **008** 3D Aesthetic | Cao | Cao | Trung bình | ⚠️ Khả thi nếu dùng DepthSplat | 4–8 tuần |
-| **001** PPC | Trung bình-Cao | Rất cao | **Rất nặng** (50+ H20 GPU hours) | ❌ Không thực tế | N/A |
+| **001** PPC | Trung bình-Cao | ✅ Có pipeline sẵn (tools: ViewCrafter, CogVideoX...) | **Rất nặng** (50+ H20 GPU hours, 14B model) | ⚠️ Khả thi về code — nặng về compute | 1–2 tuần setup (nếu có GPU ≥80GB) |
 
 ---
 
@@ -103,21 +103,49 @@
 
 ---
 
-### 001 — Photography Perspective Composition ❌
+### 001 — Photography Perspective Composition
 
-**Vấn đề cốt lõi:** Phụ thuộc hoàn toàn vào **video foundation models 14B+:**
-- Wan2.1 14B, CogVideoX 1.5, HunYuan I2V (I2V generation)
-- Qwen2-VL-2B (PQA model)
-- ViewCrafter (dataset generation)
+> ✅ **Cập nhật 2026-06-18:** GitHub repo công khai tại https://github.com/vivoCameraResearch/PPC-Official — tác giả cung cấp **toàn bộ scripts + pretrained LoRA checkpoint**. Đánh giá thay đổi hoàn toàn so với ban đầu.
 
-**Compute cực nặng:**
-- ~50 NVIDIA H20 GPU hours chỉ cho PQA training
-- Fine-tuning Wan2.1 14B: cần multi-GPU high-memory setup
-- Flow-DPO RLHF: thêm training pass nữa
+**Phân biệt hai scenario:**
 
-**Lý thuyết:** Flow-DPO loss (Rectified Flow + DPO) — phức tạp nhưng không phải bottleneck chính.
+#### Scenario A — Reimplementation từ đầu ❌ Không cần thiết và không thực tế
+Không cần viết gì từ đầu. Tất cả components đều là tools open-source có sẵn.
 
-**Kết luận:** **Không thực tế để tự implement từ đầu.** Nếu cần, hướng khả thi duy nhất: dùng base models open-source trực tiếp (Wan2.1, CogVideoX) + chỉ reimplementing phần fine-tuning pipeline + PQA model.
+#### Scenario B — Chạy inference với pretrained LoRA ✅ Khả thi ngay nếu có GPU ≥60GB
+
+Tác giả release **LoRA checkpoint** tại HuggingFace (`LujianYao/PPC`). Chỉ cần:
+1. Clone DiffSynth-Studio + tải Wan2.1-I2V-14B-480P (~67GB)
+2. Load pretrained LoRA checkpoint
+3. Chạy inference → không cần training
+
+**Yêu cầu GPU cho inference:** ~60GB VRAM (Wan 14B LoRA, 81 frames 480P). Có thể giảm 20–30% với `--use_gradient_checkpointing_offload`.
+
+#### Scenario C — Full reproduction (training lại từ đầu) ⚠️ Nặng về compute nhưng có scripts đầy đủ
+
+Pipeline 3 bước, **tất cả scripts đều được cung cấp**:
+
+| Bước | Tool | Script / Command |
+|------|------|-----------------|
+| 1. Dataset generation | ViewCrafter (open-source) | `sh run.sh` + `python utils/reverse_video.py` |
+| 2. I2V fine-tuning | DiffSynth-Studio + Wan2.1 14B | `python examples/wanvideo/train_wan_t2v.py --task train --train_architecture lora ...` |
+| 3. PQA training | VideoAlign (KwaiVGI, open-source) | `sh train.sh` |
+
+**Compute để train:**
+- Wan 14B LoRA training: **60GB VRAM** tối thiểu per GPU
+- PQA training: ~50 NVIDIA H20 GPU hours
+- Không có con số cụ thể cho data generation với ViewCrafter
+
+**Rào cản thực tế:**
+- GPU VRAM: cần ≥60GB (A100 80GB hoặc H100)
+- Storage: Wan2.1 model weights (~67GB) + DUSt3R checkpoint + ViewCrafter checkpoint
+- Annotation data cho PQA Stage 2 (paired video comparisons) — không rõ tác giả có public không
+
+**Kết luận tổng thể bài 001:**
+- **Không cần code gì từ đầu** — hoàn toàn là pipeline orchestration với tools có sẵn
+- **Inference:** Khả thi ngay với pretrained LoRA nếu có GPU ≥60GB
+- **Full training:** Khả thi nếu có GPU cluster + compute budget; scripts đầy đủ
+- **Bottleneck thực sự:** GPU VRAM (60GB minimum) và annotation data cho PQA, không phải code complexity
 
 ---
 
@@ -128,7 +156,7 @@
 | 1 | **004** | Hiểu & baseline aesthetic scoring | Nhanh nhất, clean nhất, kiến thức nền |
 | 2 | **003** | Viewpoint representation research | Lý thuyết sâu nhất; compute nhẹ |
 | 3 | **008** | Hệ thống viewpoint suggestion thực tế | Build on DepthSplat; state-of-the-art nhất |
-| 4 | **001** | Chỉ tham khảo kiến trúc, không reproduce | Quá nặng về compute |
+| 4 | **001** | Chạy pipeline có sẵn (không code lại) — nếu có GPU đủ mạnh | Authors cung cấp pipeline dùng tools có sẵn; rào cản là compute, không phải code |
 
 ---
 
