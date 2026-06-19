@@ -1,6 +1,6 @@
 ---
 name: latex-fix
-description: Reviews and fixes LaTeX formatting in notes/ artifacts produced by other Workers. Detects plain-text math that should be LaTeX (e.g. L_total, ||x||, theta, argmin), malformed delimiters, display equations that are not on their own line, and other violations of §7 of research-conventions.md — then rewrites the file in-place and reports every change. Use for: fix LaTeX, review LaTeX, sửa LaTeX, kiểm tra công thức, fix math formatting, latex-fix 003, fix all notes. Takes a notes/ file path, a paper id (fixes all notes/<id>-*.md for that paper), or "all" (fixes every file in notes/) via $ARGUMENTS.
+description: Reviews and fixes LaTeX formatting in notes/ artifacts produced by other Workers. Detects plain-text math that should be LaTeX (e.g. L_total, ||x||, theta, argmin), malformed delimiters, display equations that are not on their own line, KaTeX-incompatible commands that break rendering in VS Code (\tag{}, \label{}, \ref{}), and other violations of §7 of research-conventions.md — then rewrites the file in-place and reports every change. Use for: fix LaTeX, review LaTeX, sửa LaTeX, kiểm tra công thức, fix math formatting, latex-fix 003, fix all notes, fix \tag. Takes a notes/ file path, a paper id (fixes all notes/<id>-*.md for that paper), or "all" (fixes every file in notes/) via $ARGUMENTS.
 argument-hint: <notes/ file path | paper id | all>
 ---
 
@@ -44,6 +44,27 @@ The worker scans for the following patterns, in order of severity:
    - `norm` or `||` for norms → `\|\cdot\|`
    - Superscripts / subscripts without braces when more than one character:
      `x^{-1}` is correct, `x^-1` is not
+
+5. **KaTeX-incompatible commands** *(render engine in VS Code Markdown is KaTeX, not
+   full LaTeX/MathJax — unsupported commands cause the entire `$$` block to display
+   as raw text instead of rendering)*
+   - `\tag{N}` inside `$$...$$` — **primary offender.** KaTeX ignores or rejects it,
+     breaking the whole block.
+     Fix: remove `\tag{N}` from inside the `$$`; append `*(phương trình N trong
+     paper)*` on the line immediately after the closing `$$`.
+   - `\label{...}` inside `$$...$$` — not meaningful in Markdown anyway.
+     Fix: remove silently.
+   - `\ref{...}` anywhere — remove or replace with the equation number in plain text.
+
+   Example fix:
+   ```
+   Before:
+   $$\mathcal{L} = \lambda_1 \mathcal{L}_{rec} + \lambda_2 \mathcal{L}_{perp} \tag{1}$$
+
+   After:
+   $$\mathcal{L} = \lambda_1 \mathcal{L}_{rec} + \lambda_2 \mathcal{L}_{perp}$$
+   *(phương trình 1 trong paper)*
+   ```
 
 ## Procedure
 1. **Resolve the target.**

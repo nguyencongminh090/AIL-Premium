@@ -72,8 +72,17 @@ formulas in LaTeX — never as plain text, Unicode approximations, or code block
   hat `\hat{}`, norm `\|\cdot\|`, argmin/argmax `\arg\min`, fractions `\frac{}{}`.
 - **Never write** `L_total`, `||x||`, `theta`, or `argmin` as raw ASCII in output
   that contains mathematical content.
+- **KaTeX compatibility (VS Code Markdown renderer):** The render engine is KaTeX,
+  not full LaTeX/MathJax. Commands that are valid in LaTeX but unsupported by KaTeX
+  cause the entire `$$` block to render as raw text. Forbidden commands:
+  - `\tag{N}` — equation numbering. **Replace with:** remove `\tag{N}` from inside
+    the `$$` block and append `*(phương trình N trong paper)*` on the line immediately
+    after the closing `$$`.
+  - `\label{...}` and `\ref{...}` — not meaningful in Markdown; remove silently.
+  - When in doubt, check the [KaTeX supported functions list](https://katex.org/docs/supported.html).
 - In `vi-translate` specifically: copy equations verbatim from the source paper —
-  do not re-render or simplify them.
+  do not re-render or simplify them. Apply KaTeX compatibility fixes even on copied
+  equations so they render correctly.
 
 ## 6. Relationship to the ARS plugin
 These Workers are **lightweight, single-pass** tools for reading and distilling
