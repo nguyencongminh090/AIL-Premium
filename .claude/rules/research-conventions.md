@@ -63,23 +63,42 @@ Any Worker that writes an artifact containing mathematical content **must** rend
 formulas in LaTeX — never as plain text, Unicode approximations, or code blocks.
 
 - **Inline math** (within a sentence): `$...$` — e.g. `$\mathcal{L}_{total}$`
-- **Display math** (standalone equations): `$$...$$` on its own line — e.g.:
+- **Display math** (standalone equations): `$$...$$` with a **blank line before and
+  after** — markdown-it requires blank lines to recognise display math blocks; without
+  them the parser treats the content as plain markdown and renders raw text. e.g.:
   ```
-  $$\mathcal{L} = \lambda_1 \mathcal{L}_{rec} + \lambda_2 \mathcal{L}_{perceptual}$$
+  $$
+  \mathcal{L} = \lambda_1 \mathcal{L}_{rec} + \lambda_2 \mathcal{L}_{perceptual}
+  $$
   ```
 - **Always use proper LaTeX notation:** subscripts `_{...}`, superscripts `^{...}`,
   Greek letters `\alpha \beta \theta`, calligraphic `\mathcal{}`, bold `\mathbf{}`,
   hat `\hat{}`, norm `\|\cdot\|`, argmin/argmax `\arg\min`, fractions `\frac{}{}`.
 - **Never write** `L_total`, `||x||`, `theta`, or `argmin` as raw ASCII in output
   that contains mathematical content.
-- **KaTeX compatibility (VS Code Markdown renderer):** The render engine is KaTeX,
-  not full LaTeX/MathJax. Commands that are valid in LaTeX but unsupported by KaTeX
-  cause the entire `$$` block to render as raw text. Forbidden commands:
-  - `\tag{N}` — equation numbering. **Replace with:** remove `\tag{N}` from inside
-    the `$$` block and append `*(phương trình N trong paper)*` on the line immediately
-    after the closing `$$`.
-  - `\label{...}` and `\ref{...}` — not meaningful in Markdown; remove silently.
-  - When in doubt, check the [KaTeX supported functions list](https://katex.org/docs/supported.html).
+- **Render engine awareness — write for BOTH platforms:**
+  - **VS Code Markdown preview** uses **KaTeX** (~v0.13–0.16): lightweight, fast,
+    subset of LaTeX. Unsupported commands silently break the entire `$$` block.
+  - **GitHub** uses **MathJax 4.1.1**: full TeX implementation, supports more commands.
+  - Target: the intersection — commands safe in both. When a command works only on
+    GitHub, prefer the cross-platform alternative.
+
+  **Cross-platform command rules:**
+
+  | Command | GitHub | VS Code | Rule |
+  |---------|--------|---------|------|
+  | `\tag{N}` | ✓ | ⚠️ display only (KaTeX ≥0.13) | Remove; append `*(phương trình N trong paper)*` after closing `$$` |
+  | `\label{...}` | ✓ | ✗ | Remove silently |
+  | `\ref{...}` / `\eqref{...}` | ✓ | ✗ | Remove or replace with plain number |
+  | `\boldsymbol{...}` | ✓ | ⚠️ KaTeX ≥0.10, edge cases | Use `\mathbf{}` for latin/upright; `\pmb{}` only if `\mathbf` unavailable |
+  | `\operatorname{custom}` | ✓ | ⚠️ requires amsopn | Use `\mathrm{custom}` for custom operators; predefined (`\max`, `\min`, `\arg`, `\log`) are always safe |
+  | `\text{<non-ASCII>}` inside `\begin{cases}` / `\begin{array}` | ⚠️ | ⚠️ unstable | Keep condition columns pure math or ASCII-only; move Vietnamese/non-ASCII annotations to prose after the closing `$$` |
+  | `` ```math...``` `` fenced block | ✓ | ✗ | Replace with `$$...$$` |
+  | `\[...\]` delimiter | ✓ | ✗ | Replace with `$$...$$` |
+  | `\(...\)` delimiter | ✓ | ✗ | Replace with `$...$` |
+  | `\xrightarrow{\text{...}}` | ✓ | ✓ | Safe; if visually overflowing use `\longrightarrow \quad \text{(...)}` |
+
+  - When in doubt: [KaTeX supported functions](https://katex.org/docs/supported.html) · [MathJax extensions](https://docs.mathjax.org/en/latest/input/tex/extensions/)
 - In `vi-translate` specifically: copy equations verbatim from the source paper —
   do not re-render or simplify them. Apply KaTeX compatibility fixes even on copied
   equations so they render correctly.

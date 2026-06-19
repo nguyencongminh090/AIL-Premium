@@ -1,6 +1,6 @@
 ---
 name: latex-fix
-description: Reviews and fixes LaTeX formatting in notes/ artifacts produced by other Workers. Detects plain-text math that should be LaTeX (e.g. L_total, ||x||, theta, argmin), malformed delimiters, display equations that are not on their own line, KaTeX-incompatible commands that break rendering in VS Code (\tag{}, \label{}, \ref{}), and other violations of §7 of research-conventions.md — then rewrites the file in-place and reports every change. Use for: fix LaTeX, review LaTeX, sửa LaTeX, kiểm tra công thức, fix math formatting, latex-fix 003, fix all notes, fix \tag. Takes a notes/ file path, a paper id (fixes all notes/<id>-*.md for that paper), or "all" (fixes every file in notes/) via $ARGUMENTS.
+description: Reviews and fixes LaTeX formatting in notes/ artifacts for cross-platform rendering (VS Code KaTeX + GitHub MathJax). Detects plain-text math (L_total, ||x||, theta, argmin), wrong delimiters, malformed notation, and platform incompatibilities — \tag{} partial in KaTeX, \label{}/\ref{}/\eqref{} unsupported in KaTeX, ```math blocks unsupported in VS Code, \[...\]/\(...\) delimiters unsupported in VS Code, \boldsymbol{} edge cases. Rewrites files in-place and reports every change. Use for: fix LaTeX, review LaTeX, sửa LaTeX, kiểm tra công thức, fix \tag, fix delimiters, latex-fix 003, fix all notes. Takes a notes/ file path, paper id, or "all" via $ARGUMENTS.
 argument-hint: <notes/ file path | paper id | all>
 ---
 
@@ -29,9 +29,25 @@ The worker scans for the following patterns, in order of severity:
    - Fractions / divisions clearly in a math context: `a/b` where `a`, `b` are
      variable names
 
-2. **Wrong delimiter choice**
+2. **Wrong delimiter choice / display block formatting**
    - Standalone equation on its own line wrapped in `$...$` → should be `$$...$$`
    - `$$...$$` used mid-sentence (inline) → should be `$...$`
+   - `$$...$$` display block **not surrounded by blank lines** — markdown-it (the
+     parser used by VS Code and many editors) requires an empty line before and after
+     a display math block to recognise it as math; without blank lines, the parser
+     treats the content as plain markdown, `\mathbf{P}` becomes **P**, and the whole
+     block renders as raw text.
+     Fix: ensure one blank line before the opening `$$` and one blank line after the
+     closing `$$`.
+   - Preferred display math format for maximum robustness across renderers:
+     ```
+     $$
+     \text{equation here}
+     $$
+     ```
+     Single-line `$$equation$$` is valid in standard VS Code/GitHub but fails in
+     some third-party renderers. Flag single-line blocks as **"cần xác nhận"** if
+     the file was authored for use outside VS Code/GitHub.
 
 3. **Malformed LaTeX**
    - Unmatched `$` delimiters
@@ -45,25 +61,54 @@ The worker scans for the following patterns, in order of severity:
    - Superscripts / subscripts without braces when more than one character:
      `x^{-1}` is correct, `x^-1` is not
 
-5. **KaTeX-incompatible commands** *(render engine in VS Code Markdown is KaTeX, not
-   full LaTeX/MathJax — unsupported commands cause the entire `$$` block to display
-   as raw text instead of rendering)*
-   - `\tag{N}` inside `$$...$$` — **primary offender.** KaTeX ignores or rejects it,
-     breaking the whole block.
-     Fix: remove `\tag{N}` from inside the `$$`; append `*(phương trình N trong
-     paper)*` on the line immediately after the closing `$$`.
-   - `\label{...}` inside `$$...$$` — not meaningful in Markdown anyway.
-     Fix: remove silently.
-   - `\ref{...}` anywhere — remove or replace with the equation number in plain text.
+5. **Platform rendering incompatibilities**
 
-   Example fix:
+   Notes are read in two contexts with different engines:
+   - **VS Code Markdown preview** — **KaTeX** (~v0.13–0.16): fast subset of LaTeX;
+     unsupported commands silently break the entire `$$` block.
+   - **GitHub** — **MathJax 4.1.1**: full TeX; supports more commands.
+
+   Target: the safe intersection. Fix anything that fails in VS Code, even if it
+   works on GitHub.
+
+   | Pattern | GitHub | VS Code | Fix |
+   |---------|--------|---------|-----|
+   | `\tag{N}` inside `$$` | ✓ | ⚠️ partial | Remove `\tag{N}`; append `*(phương trình N trong paper)*` after closing `$$` |
+   | `\label{...}` | ✓ | ✗ | Remove silently |
+   | `\ref{...}` / `\eqref{...}` | ✓ | ✗ | Remove or replace with plain equation number |
+   | `` ```math...``` `` fenced block | ✓ | ✗ | Replace with `$$...$$` block |
+   | `\[...\]` delimiter | ✓ | ✗ | Replace delimiter with `$$...$$` |
+   | `\(...\)` delimiter | ✓ | ✗ | Replace delimiter with `$...$` |
+   | `\boldsymbol{...}` | ✓ | ⚠️ edge cases | Replace with `\mathbf{}` for latin letters; `\pmb{}` for greek/symbols |
+   | `\operatorname{custom}` | ✓ | ⚠️ version-dependent | Replace with `\mathrm{custom}` — supported in all KaTeX versions without amsopn extension; use only for custom single-word operators (score, attn, etc.); predefined operators (`\max`, `\min`, `\arg`) are always fine |
+   | `\text{<non-ASCII>}` inside `\begin{cases}` / `\begin{array}` | ⚠️ | ⚠️ unstable | Non-ASCII Unicode (Vietnamese diacritics, CJK, etc.) in `\text{}` within tabular math environments is unstable across KaTeX versions — may render blank, garbled, or break the whole block. **Fix:** keep condition column pure math; move Vietnamese/non-ASCII annotations to prose outside the `$$` block. See pattern below. |
+   | `\xrightarrow{\text{<long>}}` | ✓ | ✓ (may overflow) | Flag only if visually broken; suggest `\longrightarrow \quad \text{(...)}` |
+
+   Example fixes:
    ```
-   Before:
-   $$\mathcal{L} = \lambda_1 \mathcal{L}_{rec} + \lambda_2 \mathcal{L}_{perp} \tag{1}$$
+   \tag{1} removal:
+     Before: $$\mathcal{L} = \lambda_1 \mathcal{L}_{rec} \tag{1}$$
+     After:  $$\mathcal{L} = \lambda_1 \mathcal{L}_{rec}$$
+             *(phương trình 1 trong paper)*
 
-   After:
-   $$\mathcal{L} = \lambda_1 \mathcal{L}_{rec} + \lambda_2 \mathcal{L}_{perp}$$
-   *(phương trình 1 trong paper)*
+   \boldsymbol{} replacement:
+     Before: \boldsymbol{v}      →  After: \mathbf{v}     (latin letter)
+     Before: \boldsymbol{\theta} →  After: \pmb{\theta}   (greek symbol)
+
+   Delimiter replacement:
+     Before: \[E = mc^2\]        →  After: $$E = mc^2$$
+     Before: \(E = mc^2\)        →  After: $E = mc^2$
+
+   \text{non-ASCII} inside \begin{cases} — move annotation to prose:
+     Before:
+       $$f(x) = \begin{cases} 1 & \text{nếu } x > 0 \\ 0 & \text{ngược lại} \end{cases}$$
+
+     After:
+       $$f(x) = \begin{cases} 1 & x > 0 \\ 0 & \text{otherwise} \end{cases}$$
+       trong đó trường hợp đầu áp dụng khi $x > 0$, trường hợp sau khi $x \leq 0$.
+
+     Rule: condition column → pure math or ASCII-only \text{}; Vietnamese/non-ASCII
+     annotations → prose sentence after the closing $$.
    ```
 
 ## Procedure
