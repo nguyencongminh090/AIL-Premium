@@ -68,7 +68,7 @@ flowchart TD
 
   **1a. Tạo tập optic-rays** từ $\mathbf{t}$ đến mọi điểm $p$:
 
-  $$\left\{\mathbf{L}_{\mathbf{t}\to p} \;\middle|\; \mathbf{o}_{\mathbf{t}\to p} = \mathbf{t},\; \mathbf{d}_{\mathbf{t}\to p} = \frac{\mathbf{x}_p - \mathbf{t}}{\|\mathbf{x}_p - \mathbf{t}\|};\; p = 1\ldots P\right\}$$
+  $$\left\{\mathbf{L}_{\mathbf{t}\to p} \mid \mathbf{o}_{\mathbf{t}\to p} = \mathbf{t},\; \mathbf{d}_{\mathbf{t}\to p} = \frac{\mathbf{x}_p - \mathbf{t}}{\|\mathbf{x}_p - \mathbf{t}\|};\; p = 1\ldots P\right\}$$
 
   *(phương trình 10 trong paper)*
 
