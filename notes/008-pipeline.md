@@ -45,7 +45,7 @@ flowchart TD
 ### Stage 0 — Feedforward 3DGS Backbone (frozen)
 
 - **Input:** Tập ảnh thưa $\{\mathbf{I}^i \in \mathbb{R}^{H \times W \times 3}\}_{i=1}^{N}$ và pose camera $\{\mathbf{P}^i \in \mathbb{R}^{3 \times 4}\}_{i=1}^{N}$, với $N \in \{2, 4, 6\}$.
-- **Operation:** Multiview Transformer tổng hợp đặc trưng qua cơ chế plane-sweep aggregation và monocular depth cues, tạo ra $\{\mathbf{F}^i_{mv}\}_{i=1}^N$. DPT head geometry hồi quy các tham số Gaussian per-pixel: tâm $\boldsymbol{\mu}$, hiệp phương sai $\boldsymbol{\Sigma}$, độ mờ $\alpha$, màu sắc $c$. Toàn bộ backbone này được **giữ nguyên (frozen)** trong quá trình học 3D Aesthetic Field.
+- **Operation:** Multiview Transformer tổng hợp đặc trưng qua cơ chế plane-sweep aggregation và monocular depth cues, tạo ra $\{\mathbf{F}^i_{mv}\}_{i=1}^N$. DPT head geometry hồi quy các tham số Gaussian per-pixel: tâm $\pmb{\mu}$, hiệp phương sai $\pmb{\Sigma}$, độ mờ $\alpha$, màu sắc $c$. Toàn bộ backbone này được **giữ nguyên (frozen)** trong quá trình học 3D Aesthetic Field.
 - **Output:** Tập hợp 3D Gaussians biểu diễn hình học và màu sắc của cảnh.
 
 ---
@@ -66,10 +66,10 @@ flowchart TD
 
 #### Stage 1c — Gaussian Splatting Render + Transformer Downsampler (trainable)
 
-- **Input:** 3D Gaussians $(\boldsymbol{\mu}, \boldsymbol{\Sigma}, \alpha, \mathbf{f}_{aes})$ cùng novel view poses.
+- **Input:** 3D Gaussians $(\pmb{\mu}, \pmb{\Sigma}, \alpha, \mathbf{f}_{aes})$ cùng novel view poses.
 - **Operation:** Kết xuất (render) aesthetic features sang góc nhìn mới qua cùng pipeline Gaussian Splatting với RGB rendering, tạo $\hat{\mathbf{F}}_{pred} \in \mathbb{R}^{H' \times W' \times 32}$. Do $\hat{\mathbf{F}}_{pred}$ có kích thước nhỏ hơn và chiều sâu kênh khác với $\mathbf{F}_{gt}$ của teacher, một **Transformer Downsampler** nhẹ được dùng để căn chỉnh:
 
-$$\hat{\mathbf{F}}_{pred} \xrightarrow{\text{Transformer Downsampler}} \mathbf{F}_{pred} \in \mathbb{R}^{14 \times 14 \times 512}$$
+$$\hat{\mathbf{F}}_{pred} \longrightarrow \mathbf{F}_{pred} \in \mathbb{R}^{14 \times 14 \times 512} \quad \text{(Transformer Downsampler)}$$
 
 - **Output:** Predicted feature maps $\mathbf{F}_{pred}$ cùng kích thước với $\mathbf{F}_{gt}$.
 
@@ -106,11 +106,13 @@ Trong đó $\mathbf{F}_{gt}$ thu được bằng cách đưa ảnh ground-truth 
 - **Operation:** Gradient ascent trực tiếp trên pose camera để cực đại hóa aesthetic score. Bài toán tối ưu:
 
 $$\mathbf{P}^* = \arg\max_{\mathbf{P}}\; score(\mathbf{P})$$
+
 *(phương trình 1 trong paper)*
 
 Quy tắc cập nhật tại mỗi bước:
 
 $$\mathbf{P}_{t+1} = \mathbf{P}_t + \eta \nabla_{\mathbf{P}}\, score(\mathbf{P}_t)$$
+
 *(phương trình 2 trong paper)*
 
 Cấu hình cụ thể:

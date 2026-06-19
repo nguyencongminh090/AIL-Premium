@@ -16,9 +16,9 @@ Bài báo giải quyết bài toán **gợi ý góc nhìn máy ảnh thẩm mỹ
 
 Bài toán được hình thức hóa là tìm:
 
-$$\mathbf{P}^* = \arg\max_{\mathbf{P}}\; score(\mathbf{P})$$
+$$\mathbf{P}^* = \arg\max_{\mathbf{P}}\; \mathrm{score}(\mathbf{P})$$
 
-trên không gian tư thế máy ảnh liên tục, với $score(\mathbf{P})$ là điểm thẩm mỹ (aesthetic score) dự đoán tại tư thế $\mathbf{P}$.
+trên không gian tư thế máy ảnh liên tục, với $\mathrm{score}(\mathbf{P})$ là điểm thẩm mỹ (aesthetic score) dự đoán tại tư thế $\mathbf{P}$.
 
 ---
 
