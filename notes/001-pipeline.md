@@ -142,7 +142,9 @@ flowchart LR
 - **Input:** Dataset $\mathcal{D} = \{s, v_h, v_l\}$ — mỗi mẫu gồm prompt ảnh $s$, video chất lượng cao $v_h$ (win), và video chất lượng thấp $v_l$ (lose), được tạo bởi reference model $p_{\text{ref}}$.
 - **Operation:** Mục tiêu RLHF là học phân phối $p_\theta(v \mid s)$ tối đa hóa reward $r(v, s)$ (từ PQA) trong khi kiểm soát KL-divergence so với $p_{\text{ref}}$ qua hệ số $\beta$:
 
-  $$\max_{p_\theta} \mathbb{E}_{s \sim \mathcal{D},\, v \sim p_\theta(v|s)} \left[ r(v, s) \right] - \beta \, \mathbb{D}_{\text{KL}} \left[ p_\theta(v \mid s) \,\|\, p_{\text{ref}}(v \mid s) \right] \tag{1}$$
+  $$\max_{p_\theta} \mathbb{E}_{s \sim \mathcal{D},\, v \sim p_\theta(v|s)} \left[ r(v, s) \right] - \beta \, \mathbb{D}_{\text{KL}} \left[ p_\theta(v \mid s) \,\|\, p_{\text{ref}}(v \mid s) \right]$$
+
+  *(phương trình 1 trong paper)*
 
   Trong Rectified Flow, véc-tơ nhiễu $\xi^*$ liên hệ với trường vận tốc (velocity field) $\nu^*$, trong đó:
 
@@ -150,7 +152,9 @@ flowchart LR
 
   với $\xi_{\text{pred}}$ và $\nu_{\text{pred}}$ là dự đoán từ mô hình $p_\theta$ hoặc reference model $p_{\text{ref}}$. Từ quan hệ này, **Flow-DPO loss** $\mathcal{L}_{\text{FD}}(\theta)$ được rút ra:
 
-  $$\mathcal{L}_{\text{FD}}(\theta) = -\mathbb{E}\!\left[\log \sigma\!\left(-\frac{\beta_t}{2}\Bigl(\bigl(\|\nu^h - \nu_\theta(\nu_t^h, t)\|^2 - \|\nu^h - \nu_{\text{ref}}(\nu_t^h, t)\|^2\bigr) - \bigl(\|\nu^l - \nu_\theta(\nu_t^l, t)\|^2 - \|\nu^l - \nu_{\text{ref}}(\nu_t^l, t)\|^2\bigr)\Bigr)\right)\right] \tag{2}$$
+  $$\mathcal{L}_{\text{FD}}(\theta) = -\mathbb{E}\!\left[\log \sigma\!\left(-\frac{\beta_t}{2}\Bigl(\bigl(\|\nu^h - \nu_\theta(\nu_t^h, t)\|^2 - \|\nu^h - \nu_{\text{ref}}(\nu_t^h, t)\|^2\bigr) - \bigl(\|\nu^l - \nu_\theta(\nu_t^l, t)\|^2 - \|\nu^l - \nu_{\text{ref}}(\nu_t^l, t)\|^2\bigr)\Bigr)\right)\right]$$
+
+  *(phương trình 2 trong paper)*
 
   trong đó $\beta_t = \beta(1-t)^2$ và kỳ vọng lấy trên các mẫu $\{v_h, v_l\} \sim \mathcal{D}$ và schedule $t$.
 
