@@ -56,18 +56,21 @@ flowchart TD
 - **Operation:**
   Hai vector được **concatenate** rồi truyền qua 3 lớp fully connected và một lớp $\text{softmax}$ để phân loại thành 3 lớp (ternary classification). Mạng ước lượng tỉ lệ điểm thẩm mỹ (score ratio) liên tục $r_{ij} = s_i / s_j$, sau đó lượng tử hóa (quantize) thành một trong ba nhãn:
 
-  $$\hat{r}_{ij} = \begin{cases} \gamma & \text{nếu } \theta \le r_{ij}, & (i \text{ vượt trội hơn } j) \\ 1 & \text{nếu } \theta^{-1} \le r_{ij} < \theta, & (i \text{ tương đương } j) \\ \gamma^{-1} & \text{nếu } r_{ij} < \theta^{-1}, & (i \text{ kém hơn } j) \end{cases} \tag{1}$$
+  $$\hat{r}_{ij} = \begin{cases} \gamma & \text{nếu } \theta \le r_{ij}, & (i \text{ vượt trội hơn } j) \\ 1 & \text{nếu } \theta^{-1} \le r_{ij} < \theta, & (i \text{ tương đương } j) \\ \gamma^{-1} & \text{nếu } r_{ij} < \theta^{-1}, & (i \text{ kém hơn } j) \end{cases}$$
+  *(phương trình 1 trong paper)*
 
   trong đó $\gamma > 1$ là mức tái tạo (reconstruction level) cho lớp "vượt trội", $\theta$ là ngưỡng quyết định (decision level). Hai tham số $\gamma$ và $\theta$ được xác định bằng cách chỉnh sửa thuật toán Lloyd để thỏa ràng buộc đối xứng nghịch đảo (reciprocal constraint).
 
   Mức tái tạo $\gamma$ được tính bằng:
 
-  $$\gamma = \frac{\int_{\theta}^{\infty} r \, p(r) \, dr}{\int_{\theta}^{\infty} p(r) \, dr} \tag{2}$$
+  $$\gamma = \frac{\int_{\theta}^{\infty} r \, p(r) \, dr}{\int_{\theta}^{\infty} p(r) \, dr}$$
+  *(phương trình 2 trong paper)*
 
   trong đó $p(r)$ là phân phối xác suất của các tỉ lệ điểm (score ratios) trong tập huấn luyện. Ngưỡng $\theta$ được đặt bằng điểm giữa $\frac{1+\gamma}{2}$ theo tiêu chí nearest-neighbor. Hai bước này lặp lại cho đến hội tụ.
 
   Hàm mất mát huấn luyện là cross-entropy:
-  $$L_c(\mathbf{p}, \bar{\mathbf{p}}) = -\sum_{k=0}^{2} \bar{p}_k \log p_k \tag{CE}$$
+  $$L_c(\mathbf{p}, \bar{\mathbf{p}}) = -\sum_{k=0}^{2} \bar{p}_k \log p_k$$
+  *(phương trình CE trong paper)*
   trong đó $\mathbf{p} = (p_0, p_1, p_2)$ là xác suất ước lượng và $\bar{\mathbf{p}} = (\bar{p}_0, \bar{p}_1, \bar{p}_2)$ là nhãn ground-truth.
 
 - **Output:** Giá trị tỉ lệ lượng tử hóa $\hat{r}_{ij} \in \{\gamma^{-1}, 1, \gamma\}$ cho mỗi cặp ảnh.
@@ -80,11 +83,13 @@ flowchart TD
 - **Operation:**
   **Bước 3a:** Xây dựng ma trận $\mathbf{A}_{\text{ref}}$ kích thước $R \times R$ cho các ảnh tham chiếu với nhau, trong đó phần tử $(i,j)$ là tỉ lệ điểm thực:
 
-  $$\mathbf{A}_{\text{ref}} = \begin{bmatrix} a_1/a_1 & a_1/a_2 & \cdots & a_1/a_R \\ a_2/a_1 & a_2/a_2 & \cdots & a_2/a_R \\ \vdots & \vdots & & \vdots \\ a_R/a_1 & a_R/a_2 & \cdots & a_R/a_R \end{bmatrix} \tag{3}$$
+  $$\mathbf{A}_{\text{ref}} = \begin{bmatrix} a_1/a_1 & a_1/a_2 & \cdots & a_1/a_R \\ a_2/a_1 & a_2/a_2 & \cdots & a_2/a_R \\ \vdots & \vdots & & \vdots \\ a_R/a_1 & a_R/a_2 & \cdots & a_R/a_R \end{bmatrix}$$
+  *(phương trình 3 trong paper)*
 
   **Bước 3b:** Kết hợp $\mathbf{A}_{\text{ref}}$ với vector $\mathbf{b}$ để tạo ma trận pairwise comparison $\mathbf{A}$ kích thước $(R+1) \times (R+1)$ cho cả ảnh tham chiếu và ảnh đầu vào:
 
-  $$\mathbf{A} = \begin{bmatrix} \mathbf{A}_{\text{ref}} & \mathbf{b} \\ \bar{\mathbf{b}}^\top & 1 \end{bmatrix} \tag{4}$$
+  $$\mathbf{A} = \begin{bmatrix} \mathbf{A}_{\text{ref}} & \mathbf{b} \\ \bar{\mathbf{b}}^\top & 1 \end{bmatrix}$$
+  *(phương trình 4 trong paper)*
 
   trong đó $\bar{\mathbf{b}} = [b_1^{-1}, b_2^{-1}, \ldots, b_R^{-1}]^\top$ là nghịch đảo phần tử của $\mathbf{b}$, đảm bảo tính đối xứng nghịch đảo (reciprocal symmetry) của $\mathbf{A}$.
 
@@ -100,7 +105,8 @@ flowchart TD
 - **Operation:**
   Theo phương pháp scaling của Saaty [35], priority vector (vector ưu tiên) của các điểm thẩm mỹ được tìm bằng cách giải bài toán trị riêng (eigenvalue problem):
 
-  $$\mathbf{A}\mathbf{u} = \lambda \mathbf{u} \tag{5}$$
+  $$\mathbf{A}\mathbf{u} = \lambda \mathbf{u}$$
+  *(phương trình 5 trong paper)*
 
   Theo định lý Perron-Frobenius [14], $\mathbf{A}$ có một trị riêng dương lớn nhất $\lambda_{\max} = R + 1$ (trong trường hợp lý tưởng không có lỗi) với vector riêng tương ứng (principal eigenvector) có tất cả các phần tử không âm. Vector riêng chính này được ký hiệu là:
 
@@ -118,15 +124,18 @@ flowchart TD
 - **Operation:**
   Score vector $\mathbf{s}$ được tái tạo từ eigenvector $\mathbf{u}$ qua một hệ số tỉ lệ vô hướng (scalar scale factor) $\kappa$:
 
-  $$\mathbf{s} = \kappa \mathbf{u} \tag{6}$$
+  $$\mathbf{s} = \kappa \mathbf{u}$$
+  *(phương trình 6 trong paper)*
 
   Hệ số tối ưu $\kappa^*$ được xác định bằng cách tối thiểu hóa sai số bình phương $\|\tilde{\mathbf{s}}_{\text{ref}} - \mathbf{s}_{\text{ref}}\|^2 = \|\tilde{\mathbf{s}}_{\text{ref}} - \kappa\mathbf{u}_{\text{ref}}\|^2$, cho nghiệm dạng closed-form:
 
-  $$\kappa^* = \frac{\mathbf{u}_{\text{ref}}^\top \tilde{\mathbf{s}}_{\text{ref}}}{\mathbf{u}_{\text{ref}}^\top \mathbf{u}_{\text{ref}}} \tag{7}$$
+  $$\kappa^* = \frac{\mathbf{u}_{\text{ref}}^\top \tilde{\mathbf{s}}_{\text{ref}}}{\mathbf{u}_{\text{ref}}^\top \mathbf{u}_{\text{ref}}}$$
+  *(phương trình 7 trong paper)*
 
   Cuối cùng, điểm thẩm mỹ của ảnh đầu vào được tính bằng:
 
-  $$s = \kappa^* u \tag{8}$$
+  $$s = \kappa^* u$$
+  *(phương trình 8 trong paper)*
 
 - **Output:** Điểm thẩm mỹ vô hướng $s \in \mathbb{R}^+$ cho ảnh đầu vào.
 
@@ -142,7 +151,8 @@ flowchart TD
 
   Độ chính xác đo bằng:
 
-  $$\text{Accuracy} = \frac{N_c}{N} \tag{13}$$
+  $$\text{Accuracy} = \frac{N_c}{N}$$
+  *(phương trình 13 trong paper)*
 
   trong đó $N_c$ là số ảnh phân loại đúng, $N$ là tổng số ảnh kiểm tra.
 
@@ -156,13 +166,15 @@ flowchart TD
 - **Operation:**
   Xây dựng ma trận pairwise comparison mở rộng kích thước $(R_g + R_p + 1) \times (R_g + R_p + 1)$:
 
-  $$\mathbf{A} = \begin{bmatrix} \mathbf{A}_g & \mathbf{A}_{gp} & \mathbf{b}_g \\ \mathbf{A}_{gp}^\top & \mathbf{A}_p & \mathbf{b}_p \\ \mathbf{b}_g^\top & \mathbf{b}_p^\top & 1 \end{bmatrix} \tag{9}$$
+  $$\mathbf{A} = \begin{bmatrix} \mathbf{A}_g & \mathbf{A}_{gp} & \mathbf{b}_g \\ \mathbf{A}_{gp}^\top & \mathbf{A}_p & \mathbf{b}_p \\ \mathbf{b}_g^\top & \mathbf{b}_p^\top & 1 \end{bmatrix}$$
+  *(phương trình 9 trong paper)*
 
   trong đó $\mathbf{A}_g$, $\mathbf{A}_p$ là ma trận so sánh cho generic và personal reference images; $\mathbf{A}_{gp}$ ghi nhận tỉ lệ điểm giữa từng cặp (generic, personal); $\mathbf{b}_g$, $\mathbf{b}_p$ là vector tỉ lệ của ảnh đầu vào so với từng loại ảnh tham chiếu.
 
   Sau phân rã trị riêng của $\mathbf{A}$ trong (9), thu được $\mathbf{u} = [\mathbf{u}_g^\top, \mathbf{u}_p^\top, u]^\top$. Điểm cá nhân hóa được tính bằng:
 
-  $$s = \frac{\mathbf{u}_g^\top \tilde{\mathbf{s}}_g + \mathbf{u}_p^\top \tilde{\mathbf{s}}_p}{\mathbf{u}_g^\top \mathbf{u}_g + \mathbf{u}_p^\top \mathbf{u}_p} \cdot u \tag{10}$$
+  $$s = \frac{\mathbf{u}_g^\top \tilde{\mathbf{s}}_g + \mathbf{u}_p^\top \tilde{\mathbf{s}}_p}{\mathbf{u}_g^\top \mathbf{u}_g + \mathbf{u}_p^\top \mathbf{u}_p} \cdot u$$
+  *(phương trình 10 trong paper)*
 
   trong đó $\tilde{\mathbf{s}}_g$ và $\tilde{\mathbf{s}}_p$ là ground-truth score vector của generic và personal reference images.
 

@@ -105,11 +105,13 @@ Trong đó $\mathbf{F}_{gt}$ thu được bằng cách đưa ảnh ground-truth 
 - **Input:** $\{\mathbf{P}^k_{cand}\}_{k=1}^{K}$ từ Stage 2.
 - **Operation:** Gradient ascent trực tiếp trên pose camera để cực đại hóa aesthetic score. Bài toán tối ưu:
 
-$$\mathbf{P}^* = \arg\max_{\mathbf{P}}\; score(\mathbf{P}) \tag{1}$$
+$$\mathbf{P}^* = \arg\max_{\mathbf{P}}\; score(\mathbf{P})$$
+*(phương trình 1 trong paper)*
 
 Quy tắc cập nhật tại mỗi bước:
 
-$$\mathbf{P}_{t+1} = \mathbf{P}_t + \eta \nabla_{\mathbf{P}}\, score(\mathbf{P}_t) \tag{2}$$
+$$\mathbf{P}_{t+1} = \mathbf{P}_t + \eta \nabla_{\mathbf{P}}\, score(\mathbf{P}_t)$$
+*(phương trình 2 trong paper)*
 
 Cấu hình cụ thể:
 - Optimizer: **Adam** [10]
