@@ -92,6 +92,7 @@ formulas in LaTeX — never as plain text, Unicode approximations, or code block
   | `\ref{...}` / `\eqref{...}` | ✓ | ✗ | Remove or replace with plain number |
   | `\boldsymbol{...}` | ✓ | ⚠️ KaTeX ≥0.10, edge cases | Use `\mathbf{}` for latin/upright; `\pmb{}` only if `\mathbf` unavailable |
   | `\operatorname{custom}` | ✓ | ⚠️ requires amsopn | Use `\mathrm{custom}` for custom operators; predefined (`\max`, `\min`, `\arg`, `\log`) are always safe |
+  | `\middle\|` inside `\left...\right` | ✓ | ⚠️ KaTeX bug #683 | Use `\mid` — universally supported, semantically correct for set-builder "such that" |
   | `\text{<non-ASCII>}` inside `\begin{cases}` / `\begin{array}` | ⚠️ | ⚠️ unstable | Keep condition columns pure math or ASCII-only; move Vietnamese/non-ASCII annotations to prose after the closing `$$` |
   | `` ```math...``` `` fenced block | ✓ | ✗ | Replace with `$$...$$` |
   | `\[...\]` delimiter | ✓ | ✗ | Replace with `$$...$$` |

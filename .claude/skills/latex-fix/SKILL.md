@@ -81,6 +81,7 @@ The worker scans for the following patterns, in order of severity:
    | `\(...\)` delimiter | ✓ | ✗ | Replace delimiter with `$...$` |
    | `\boldsymbol{...}` | ✓ | ⚠️ edge cases | Replace with `\mathbf{}` for latin letters; `\pmb{}` for greek/symbols |
    | `\operatorname{custom}` | ✓ | ⚠️ version-dependent | Replace with `\mathrm{custom}` — supported in all KaTeX versions without amsopn extension; use only for custom single-word operators (score, attn, etc.); predefined operators (`\max`, `\min`, `\arg`) are always fine |
+   | `\middle\|` / `\middle\|` in `\left...\right` | ✓ | ⚠️ KaTeX bug #683 — spacing before `\middle` silently dropped; may cause entire block to fail in non-standard renderers | Replace with `\mid` for set-builder notation (`\{x \mid condition\}`); `\mid` is universally supported and semantically correct for "such that" |
    | `\text{<non-ASCII>}` inside `\begin{cases}` / `\begin{array}` | ⚠️ | ⚠️ unstable | Non-ASCII Unicode (Vietnamese diacritics, CJK, etc.) in `\text{}` within tabular math environments is unstable across KaTeX versions — may render blank, garbled, or break the whole block. **Fix:** keep condition column pure math; move Vietnamese/non-ASCII annotations to prose outside the `$$` block. See pattern below. |
    | `\xrightarrow{\text{<long>}}` | ✓ | ✓ (may overflow) | Flag only if visually broken; suggest `\longrightarrow \quad \text{(...)}` |
 
@@ -98,6 +99,10 @@ The worker scans for the following patterns, in order of severity:
    Delimiter replacement:
      Before: \[E = mc^2\]        →  After: $$E = mc^2$$
      Before: \(E = mc^2\)        →  After: $E = mc^2$
+
+   \middle replacement:
+     Before: \left\{x \;\middle|\; x > 0\right\}
+     After:  \left\{x \mid x > 0\right\}
 
    \text{non-ASCII} inside \begin{cases} — move annotation to prose:
      Before:
